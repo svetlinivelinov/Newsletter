@@ -159,12 +159,15 @@ export const handler = async (event) => {
         } else {
           failed++;
           errors.push({ email: subscriber.email, error: result.error });
+          console.error(`[DIGEST] Failed to send to ${subscriber.email}:`, result.error);
         }
       } catch (error) {
         failed++;
         errors.push({ email: subscriber.email, error: error.message });
         console.error(`[DIGEST] Failed to send to ${subscriber.email}:`, error.message);
       }
+      // Resend free tier: max 2 req/s — wait 1s between sends to avoid rate limits
+      await new Promise(r => setTimeout(r, 1000));
     }
 
     // saveStats is a no-op with Resend Contacts backend — skip to avoid rate limit

@@ -35,9 +35,16 @@ export const sendDigest = async (to, htmlContent) => {
       },
     });
     
-    return { success: true, id: response.id };
+    const id = response.data?.id ?? response.id;
+    const err = response.error;
+    if (err) {
+      console.error(`[EMAIL] Resend rejected ${to}:`, JSON.stringify(err));
+      return { success: false, error: err.message ?? JSON.stringify(err) };
+    }
+    console.info(`[EMAIL] Sent to ${to} — Resend ID: ${id}`);
+    return { success: true, id };
   } catch (error) {
-    console.error('[EMAIL] Send digest failed:', error.message);
+    console.error('[EMAIL] Send digest failed to', to, '—', error.message);
     return { success: false, error: error.message };
   }
 };

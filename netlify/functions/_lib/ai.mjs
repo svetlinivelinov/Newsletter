@@ -85,7 +85,7 @@ DATA: ${JSON.stringify(data, null, 2)}`;
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.3,
-      max_tokens: 4000,
+      max_completion_tokens: 4000,
     });
 
     return response.choices[0].message.content;
@@ -118,7 +118,7 @@ Format:
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.2,
-      max_tokens: 1500,
+      max_completion_tokens: 1500,
     });
 
     return response.choices[0].message.content;
@@ -149,7 +149,7 @@ DATA: ${JSON.stringify(signals, null, 2)}`;
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.3,
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
     });
 
     return response.choices[0].message.content;

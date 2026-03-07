@@ -1,4 +1,4 @@
-import { getSubscriber, saveSubscriber, getStats, saveStats } from './_lib/db.mjs';
+import { getSubscriberAndStats, saveSubscriber } from './_lib/db.mjs';
 
 const MAX_SUBSCRIBERS = parseInt(process.env.MAX_SUBSCRIBERS || '500', 10);
 
@@ -63,8 +63,9 @@ export const handler = async (event) => {
   const sanitizedEmail = email.trim().toLowerCase();
 
   try {
-    // Check if already subscribed
-    const existing = await getSubscriber(sanitizedEmail);
+    // Single API call — gets subscriber status and count together
+    const { subscriber: existing, stats } = await getSubscriberAndStats(sanitizedEmail);
+
     if (existing && existing.active) {
       return {
         statusCode: 409,
@@ -74,7 +75,6 @@ export const handler = async (event) => {
     }
 
     // Check subscriber cap
-    const stats = await getStats();
     if (stats.totalSubscribers >= MAX_SUBSCRIBERS) {
       return {
         statusCode: 429,
@@ -100,12 +100,6 @@ export const handler = async (event) => {
     if (!saved) {
       throw new Error('Failed to save subscriber');
     }
-
-    // Update stats
-    await saveStats({
-      totalSubscribers: stats.totalSubscribers + 1,
-      lastDigestSentAt: stats.lastDigestSentAt,
-    });
 
     console.info(`[SUBSCRIBE] New subscriber: ${sanitizedEmail}`);
 

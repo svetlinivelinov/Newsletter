@@ -9,6 +9,7 @@
 
 [functions]
   node_bundler = "esbuild"
+  external_node_modules = ["@netlify/blobs"]
 
 # Phase 1 — Daily digest at 07:00 UTC
 [functions."send-newsletters"]

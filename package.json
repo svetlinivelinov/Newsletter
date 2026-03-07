@@ -1,0 +1,23 @@
+{
+  "name": "ai-early-signal-newsletter",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "AI-powered intelligence newsletter platform with multi-tier alert system",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step required'",
+    "test:subscribe": "curl -X POST http://localhost:8888/.netlify/functions/subscribe -H \"Content-Type: application/json\" -d '{\"email\":\"test@example.com\"}'",
+    "test:digest": "curl -X POST http://localhost:8888/.netlify/functions/send-newsletters -H \"x-cron-secret: test_secret\""
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0",
+    "@upstash/redis": "^1.0.0",
+    "@supabase/supabase-js": "^2.0.0",
+    "openai": "^4.0.0",
+    "resend": "^3.0.0",
+    "fast-xml-parser": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

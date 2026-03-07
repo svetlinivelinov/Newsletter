@@ -1,0 +1,23 @@
+[build]
+  functions = "netlify/functions"
+  publish   = "."
+
+[dev]
+  framework  = "#static"
+  targetPort = 3999
+  port       = 8888
+
+[functions]
+  node_bundler = "esbuild"
+
+# Phase 1 — Daily digest at 07:00 UTC
+[functions."send-newsletters"]
+  schedule = "0 7 * * *"
+
+# Security headers
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options        = "DENY"
+    X-XSS-Protection       = "1; mode=block"

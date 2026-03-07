@@ -1,42 +1,52 @@
-import { getStore } from '@netlify/blobs';
+import { Resend } from 'resend';
 
-/**
- * Get subscriber by email
- * @param {string} email
- * @returns {Promise<object|null>}
- */
+const resend = new Resend(process.env.EMAIL_API_KEY);
+
+const getAudienceId = () => {
+  const id = process.env.RESEND_AUDIENCE_ID;
+  if (!id) throw new Error('RESEND_AUDIENCE_ID environment variable is not set');
+  return id;
+};
+
+const listAllContacts = async (audienceId) => {
+  const { data, error } = await resend.contacts.list({ audienceId });
+  if (error) throw new Error(`Resend API error: ${error.message}`);
+  return data?.data || [];
+};
+
 export const getSubscriber = async (email) => {
   try {
-    const store = getStore('subscribers');
-    const data = await store.get(`subscriber:${email}`, { type: 'json' });
-    return data;
+    const audienceId = getAudienceId();
+    const contacts = await listAllContacts(audienceId);
+    const contact = contacts.find(c => c.email === email);
+    if (!contact) return null;
+    return {
+      email: contact.email,
+      active: !contact.unsubscribed,
+      subscribedAt: contact.created_at,
+      id: contact.id,
+    };
   } catch (error) {
     console.error('[DB] Get subscriber failed:', error.message, error.stack);
     return null;
   }
 };
 
-/**
- * Save subscriber
- * @param {string} email
- * @param {object} data - { email, subscribedAt, active }
- * @returns {Promise<boolean>}
- */
-export const saveSubscriber = async (email, data) => {
-  const store = getStore('subscribers');
-  await store.setJSON(`subscriber:${email}`, data);
+export const saveSubscriber = async (email, _data) => {
+  const audienceId = getAudienceId();
+  const { error } = await resend.contacts.create({ audienceId, email, unsubscribed: false });
+  if (error) throw new Error(`Resend contacts.create failed: ${error.message}`);
   return true;
 };
 
-/**
- * Delete subscriber
- * @param {string} email
- * @returns {Promise<boolean>}
- */
 export const deleteSubscriber = async (email) => {
   try {
-    const store = getStore('subscribers');
-    await store.delete(`subscriber:${email}`);
+    const audienceId = getAudienceId();
+    const contacts = await listAllContacts(audienceId);
+    const contact = contacts.find(c => c.email === email);
+    if (!contact) return true;
+    const { error } = await resend.contacts.remove({ audienceId, id: contact.id });
+    if (error) throw new Error(error.message);
     return true;
   } catch (error) {
     console.error('[DB] Delete subscriber failed:', error.message);
@@ -44,52 +54,31 @@ export const deleteSubscriber = async (email) => {
   }
 };
 
-/**
- * List all active subscribers
- * @returns {Promise<Array>}
- */
 export const listSubscribers = async () => {
   try {
-    const store = getStore('subscribers');
-    const { blobs } = await store.list({ prefix: 'subscriber:' });
-    
-    const subscribers = [];
-    for (const blob of blobs) {
-      const data = await store.get(blob.key, { type: 'json' });
-      if (data && data.active) {
-        subscribers.push(data);
-      }
-    }
-    
-    return subscribers;
+    const audienceId = getAudienceId();
+    const contacts = await listAllContacts(audienceId);
+    return contacts
+      .filter(c => !c.unsubscribed)
+      .map(c => ({ email: c.email, active: true, subscribedAt: c.created_at }));
   } catch (error) {
     console.error('[DB] List subscribers failed:', error.message);
     return [];
   }
 };
 
-/**
- * Get stats
- * @returns {Promise<object>}
- */
 export const getStats = async () => {
   try {
-    const store = getStore('subscribers');
-    const data = await store.get('meta:stats', { type: 'json' });
-    return data || { totalSubscribers: 0, lastDigestSentAt: null };
+    const audienceId = getAudienceId();
+    const contacts = await listAllContacts(audienceId);
+    const totalSubscribers = contacts.filter(c => !c.unsubscribed).length;
+    return { totalSubscribers, lastDigestSentAt: null };
   } catch (error) {
     console.error('[DB] Get stats failed:', error.message);
     return { totalSubscribers: 0, lastDigestSentAt: null };
   }
 };
 
-/**
- * Save stats
- * @param {object} stats
- * @returns {Promise<boolean>}
- */
-export const saveStats = async (stats) => {
-  const store = getStore('subscribers');
-  await store.setJSON('meta:stats', stats);
-  return true;
-};
+// Stats are now derived dynamically from Resend Contacts — nothing to persist.
+export const saveStats = async (_stats) => true;
+

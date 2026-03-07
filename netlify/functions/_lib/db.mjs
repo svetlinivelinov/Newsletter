@@ -11,7 +11,7 @@ export const getSubscriber = async (email) => {
     const data = await store.get(`subscriber:${email}`, { type: 'json' });
     return data;
   } catch (error) {
-    console.error('[DB] Get subscriber failed:', error.message);
+    console.error('[DB] Get subscriber failed:', error.message, error.stack);
     return null;
   }
 };
@@ -23,14 +23,9 @@ export const getSubscriber = async (email) => {
  * @returns {Promise<boolean>}
  */
 export const saveSubscriber = async (email, data) => {
-  try {
-    const store = getStore('subscribers');
-    await store.setJSON(`subscriber:${email}`, data);
-    return true;
-  } catch (error) {
-    console.error('[DB] Save subscriber failed:', error.message);
-    return false;
-  }
+  const store = getStore('subscribers');
+  await store.setJSON(`subscriber:${email}`, data);
+  return true;
 };
 
 /**
@@ -94,12 +89,7 @@ export const getStats = async () => {
  * @returns {Promise<boolean>}
  */
 export const saveStats = async (stats) => {
-  try {
-    const store = getStore('subscribers');
-    await store.setJSON('meta:stats', stats);
-    return true;
-  } catch (error) {
-    console.error('[DB] Save stats failed:', error.message);
-    return false;
-  }
+  const store = getStore('subscribers');
+  await store.setJSON('meta:stats', stats);
+  return true;
 };

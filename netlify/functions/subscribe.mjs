@@ -2,15 +2,28 @@ import { getSubscriber, saveSubscriber, getStats, saveStats } from './_lib/db.mj
 
 const MAX_SUBSCRIBERS = parseInt(process.env.MAX_SUBSCRIBERS || '500', 10);
 
+const CORS_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 /**
  * POST /subscribe
  * Accept new subscriber
  */
 export const handler = async (event) => {
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers: CORS_HEADERS, body: '' };
+  }
+
   // Only accept POST
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers: CORS_HEADERS,
       body: JSON.stringify({ error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' }),
     };
   }
@@ -21,6 +34,7 @@ export const handler = async (event) => {
   } catch (error) {
     return {
       statusCode: 400,
+      headers: CORS_HEADERS,
       body: JSON.stringify({ error: 'Invalid JSON', code: 'INVALID_JSON' }),
     };
   }
@@ -31,6 +45,7 @@ export const handler = async (event) => {
   if (!email || typeof email !== 'string') {
     return {
       statusCode: 400,
+      headers: CORS_HEADERS,
       body: JSON.stringify({ error: 'Email is required', code: 'EMAIL_REQUIRED' }),
     };
   }
@@ -39,6 +54,7 @@ export const handler = async (event) => {
   if (!emailRegex.test(email)) {
     return {
       statusCode: 400,
+      headers: CORS_HEADERS,
       body: JSON.stringify({ error: 'Invalid email format', code: 'INVALID_EMAIL' }),
     };
   }
@@ -52,6 +68,7 @@ export const handler = async (event) => {
     if (existing && existing.active) {
       return {
         statusCode: 409,
+        headers: CORS_HEADERS,
         body: JSON.stringify({ error: 'Email already subscribed', code: 'ALREADY_SUBSCRIBED' }),
       };
     }
@@ -61,6 +78,7 @@ export const handler = async (event) => {
     if (stats.totalSubscribers >= MAX_SUBSCRIBERS) {
       return {
         statusCode: 429,
+        headers: CORS_HEADERS,
         body: JSON.stringify({ 
           error: 'Subscriber limit reached', 
           code: 'LIMIT_REACHED',
@@ -93,9 +111,7 @@ export const handler = async (event) => {
 
     return {
       statusCode: 201,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: CORS_HEADERS,
       body: JSON.stringify({ 
         success: true, 
         message: 'Successfully subscribed',
@@ -103,13 +119,15 @@ export const handler = async (event) => {
       }),
     };
   } catch (error) {
-    console.error('[SUBSCRIBE] Error:', error.message);
+    console.error('[SUBSCRIBE] Error:', error.message, '\nStack:', error.stack);
     
     return {
       statusCode: 500,
+      headers: CORS_HEADERS,
       body: JSON.stringify({ 
         error: 'Internal server error', 
         code: 'INTERNAL_ERROR',
+        detail: error.message,
       }),
     };
   }

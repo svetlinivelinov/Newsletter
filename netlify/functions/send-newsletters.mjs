@@ -167,12 +167,7 @@ export const handler = async (event) => {
       }
     }
 
-    // Update stats
-    const stats = await getStats();
-    await saveStats({
-      totalSubscribers: stats.totalSubscribers,
-      lastDigestSentAt: new Date().toISOString(),
-    });
+    // saveStats is a no-op with Resend Contacts backend — skip to avoid rate limit
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     

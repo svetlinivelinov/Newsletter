@@ -1,0 +1,29 @@
+name: Daily Newsletter Trigger
+
+on:
+  schedule:
+    - cron: '0 7 * * *'   # 07:00 UTC every day
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger newsletter function
+        run: |
+          HTTP_STATUS=$(curl -s -o response.txt -w "%{http_code}" \
+            -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            https://intelligencenewsletter.netlify.app/.netlify/functions/send-newsletters-background)
+
+          echo "HTTP status: $HTTP_STATUS"
+          echo "Response: $(cat response.txt)"
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Newsletter triggered successfully"
+          else
+            echo "Trigger failed with status $HTTP_STATUS"
+            exit 1
+          fi

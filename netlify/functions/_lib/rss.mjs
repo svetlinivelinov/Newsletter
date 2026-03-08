@@ -124,3 +124,91 @@ async function fetchFeed(feed, cutoffTime) {
     return [];
   }
 }
+
+// ─── Google News RSS ─────────────────────────────────────────────────────────
+
+const GOOGLE_NEWS_FEEDS = [
+  { name: 'Google Top', url: 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en' },
+  { name: 'Google World', url: 'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en' },
+  { name: 'Google Business', url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en' },
+  { name: 'Google Tech', url: 'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en' },
+];
+
+/**
+ * Fetch Google News RSS headlines
+ * @returns {Promise<Array>} Normalized event objects
+ */
+export async function fetchGoogleNews() {
+  try {
+    console.info('[GNEWS] Fetching Google News feeds...');
+
+    const results = await Promise.allSettled(
+      GOOGLE_NEWS_FEEDS.map(feed => fetchGoogleNewsFeed(feed))
+    );
+
+    const allItems = [];
+    const seenUrls = new Set();
+
+    results.forEach((result, idx) => {
+      if (result.status === 'fulfilled' && result.value) {
+        for (const item of result.value) {
+          if (!seenUrls.has(item.url)) {
+            seenUrls.add(item.url);
+            allItems.push(item);
+          }
+        }
+      } else if (result.status === 'rejected') {
+        console.error(`[GNEWS] ${GOOGLE_NEWS_FEEDS[idx].name} failed:`, result.reason?.message);
+      }
+    });
+
+    console.info(`[GNEWS] Fetched ${allItems.length} headlines`);
+    return allItems;
+  } catch (error) {
+    console.error('[GNEWS] Fetch failed:', error.message);
+    return [];
+  }
+}
+
+async function fetchGoogleNewsFeed(feed) {
+  const response = await fetch(feed.url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; IntelligenceBot/1.0)' },
+  });
+  if (!response.ok) throw new Error(`${feed.name} HTTP ${response.status}`);
+
+  const xml = await response.text();
+  const data = parser.parse(xml);
+
+  const channel = data.rss?.channel || data.feed;
+  if (!channel) return [];
+
+  const items = Array.isArray(channel.item) ? channel.item : [channel.item].filter(Boolean);
+
+  return items
+    .filter(item => item.link || item.id)
+    .map(item => {
+      const title = item.title?.toString() || '';
+      const description = item.description?.toString() || title;
+      const link = typeof item.link === 'string' ? item.link : (item.link?.href || item.id || '');
+      const pubDate = item.pubDate || item.published || item.updated;
+      // Simple hash for ID
+      let hash = 0;
+      for (let i = 0; i < link.length; i++) {
+        hash = ((hash << 5) - hash) + link.charCodeAt(i);
+        hash |= 0;
+      }
+
+      return {
+        id: `gnews_${Math.abs(hash).toString(36)}`,
+        source: 'googlenews',
+        title,
+        summary: description.replace(/<[^>]*>/g, '').slice(0, 500),
+        url: link,
+        timestamp: pubDate ? new Date(pubDate) : new Date(),
+        tone: 0,
+        category: 'news',
+        score: 0,
+        confirmed: false,
+      };
+    });
+}

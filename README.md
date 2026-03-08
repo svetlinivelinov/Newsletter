@@ -111,3 +111,36 @@ project-root/
 ## License
 
 ISC
+
+Future plan
+
+If you want to be truly ahead of mainstream media:
+Add GDELT + Press Releases
+These two alone will give you:
+- Early signals
+- Global coverage
+- Raw information before journalists rewrite it
+Then use AI to:
+- Filter
+- Summarize
+- Rank by importance
+- Turn into a clean briefing
+That’s how you build a real intelligence system, not just another news digest
+
+Yes — if your goal is to be ahead of mainstream news, you need at least one early-signal source.
+Here’s the ranking of what will give you the biggest advantage:
+
+
+![alt text](image.png) in keep
+
+🧭 My recommendation for your app
+Given your current stack, the single best next addition is:
+➤ GDELT + Press Releases
+This combination gives you:
+- Global early signals
+- Corporate early signals
+- Zero cost
+- No API keys
+- High-frequency updates
+- Perfect raw material for AI summarization
+This is how you build a true intelligence briefing system, not just another news aggregator.

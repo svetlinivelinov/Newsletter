@@ -6,7 +6,7 @@ import fetchContracts from './_lib/contracts.mjs';
 import fetchEdgarFilings from './_lib/edgar.mjs';
 import fetchCryptoSignals from './_lib/crypto.mjs';
 import fetchMarketSignals from './_lib/market.mjs';
-import applyWatchlist from './_lib/watchlist.mjs';
+import applyWatchlist, { buildSignalList } from './_lib/watchlist.mjs';
 import generateContent from './_lib/ai.mjs';
 import { sendDigest } from './_lib/email.mjs';
 import { listSubscribers, getStats, saveStats } from './_lib/db.mjs';
@@ -122,6 +122,17 @@ export const handler = async (event) => {
         }),
       };
     }
+
+    // Fetch Phase 4 intelligence signals
+    console.info('[DIGEST] Building intelligence signal list...');
+    let signals = [];
+    try {
+      signals = await buildSignalList();
+      console.info(`[DIGEST] Got ${signals.length} signals (${signals.filter(s => s.confirmed).length} confirmed)`);
+    } catch (err) {
+      console.error('[DIGEST] Signal list failed (non-fatal):', err.message);
+    }
+    updatedData.signals = signals;
 
     // Generate newsletter content
     console.info('[DIGEST] Generating AI content...');

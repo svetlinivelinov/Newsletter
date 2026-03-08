@@ -46,6 +46,9 @@ Write a daily briefing in clean HTML for email clients.
 Use ONLY the provided data. Never invent or hallucinate facts.
 If a section has no data write: <p>No updates today.</p>
 Every item MUST have a source link: <a href="URL">[Source]</a>. Omit items without URLs.
+You have access to early intelligence signals from GDELT, press releases, Twitter, and Google News — often ahead of mainstream media.
+Highlight any CONFIRMED cross-source signals prominently.
+Use tone scores to gauge severity: below -3 indicates a serious event.
 No markdown. No inline styles.`;
 
   const userPrompt = `Generate today's intelligence digest using ONLY the data below.
@@ -66,10 +69,22 @@ Sections (use <h2> tags):
 9.  📊 Stock Signals            — ticker, price, change, analyst target, signals
 10. 🔭 Watchlist                — watchlistHits only; empty = "No watchlist activity today."
                                   Group by region if regional hits present.
+11. 🎯 Top Confirmed Signals   — ONLY if data.signals contains items with confirmed=true.
+                                  Show top 3 confirmed signals in a highlighted box.
+                                  For each: title, confirming sources, score, link.
+12. 🌐 Global Early Signals    — ONLY if data.signals contains source='gdelt' items.
+                                  Show top 5 GDELT events. For each: title, summary, tone score, link.
+13. 📢 Corporate Announcements — ONLY if data.signals contains source='press' items.
+                                  Show top 5 press releases. For each: title, summary, link.
+14. ⚡ Real-Time Signals       — ONLY if data.signals contains source='twitter' items.
+                                  Show top 5 tweets. For each: text preview, link.
+15. 📰 Breaking Headlines      — ONLY if data.signals contains source='googlenews' items.
+                                  Show top 5 headlines. For each: title, link.
 
 Rules:
 - Sections 1–7: 3–5 items max per section/sub-section. Section 1: up to 8 items.
 - Sections 8–10: facts only, no predictions, no buy/sell advice.
+- Sections 11–15: only render if data.signals has matching items. Omit entirely if empty.
 - End sections 8, 9, 10 with:
   <p><em>For informational purposes only. Not financial advice. Do your own research.</em></p>
 - Never fabricate data not present below.

@@ -6,46 +6,120 @@ const FRED_API_KEY = process.env.FRED_API_KEY;
 const FRED_BASE_URL = 'https://api.stlouisfed.org/fred';
 
 const MACRO_SERIES = [
-  { id: 'CPIAUCSL', name: 'CPI Inflation', impact: 'VERY_HIGH' },
-  { id: 'UNRATE', name: 'Unemployment Rate', impact: 'VERY_HIGH' },
-  { id: 'FEDFUNDS', name: 'Fed Funds Rate', impact: 'VERY_HIGH' },
-  { id: 'GDP', name: 'GDP Growth', impact: 'HIGH' },
-  { id: 'T10Y2Y', name: 'Yield Curve 10Y-2Y', impact: 'HIGH' },
-  { id: 'DCOILWTICO', name: 'Crude Oil WTI', impact: 'MEDIUM' },
-  { id: 'DEXUSEU', name: 'USD/EUR Rate', impact: 'MEDIUM' },
+  { id: 'CPIAUCSL', name: 'CPI Inflation', impact: 'VERY_HIGH', source: 'fred' },
+  { id: 'UNRATE', name: 'Unemployment Rate', impact: 'VERY_HIGH', source: 'fred' },
+  { id: 'FEDFUNDS', name: 'Fed Funds Rate', impact: 'VERY_HIGH', source: 'fred' },
+  { id: 'GDP', name: 'GDP Growth', impact: 'HIGH', source: 'fred' },
+  { id: 'T10Y2Y', name: 'Yield Curve 10Y-2Y', impact: 'HIGH', source: 'finnhub' },
+  { id: 'DCOILWTICO', name: 'Crude Oil WTI', impact: 'MEDIUM', source: 'finnhub' },
+  { id: 'DEXUSEU', name: 'USD/EUR Rate', impact: 'MEDIUM', source: 'finnhub' },
 ];
 
 /**
  * Fetch macro indicators from FRED
  * @returns {Promise<object>} { indicators, upcomingReleases }
  */
+import { fetchYahooPrice } from './yahoo.mjs';
+
 export default async function fetchMacro() {
-  if (!FRED_API_KEY) {
-    console.warn('[MACRO] FRED_API_KEY not set, skipping macro data');
-    return { indicators: [], upcomingReleases: [] };
-  }
+  const indicators = [];
+  const upcomingReleases = [];
 
-  try {
-    const results = await Promise.allSettled(
-      MACRO_SERIES.map(series => fetchSeries(series))
-    );
-
-    const indicators = [];
-    const upcomingReleases = [];
-
-    results.forEach((result, idx) => {
-      if (result.status === 'fulfilled' && result.value) {
-        const { indicator, release } = result.value;
-        if (indicator) indicators.push(indicator);
-        if (release) upcomingReleases.push(release);
+  await Promise.all(
+    MACRO_SERIES.map(async (series) => {
+      if (series.source === 'fred') {
+        if (!FRED_API_KEY) return;
+        const result = await fetchSeries(series);
+        // Only show if updated within 1 day
+        if (result && result.indicator && result.indicator.date) {
+          const indicatorDate = new Date(result.indicator.date);
+          const now = new Date();
+          const diffDays = Math.abs((now - indicatorDate) / (1000 * 60 * 60 * 24));
+          if (diffDays <= 1) indicators.push(result.indicator);
+        }
+        if (result && result.release) upcomingReleases.push(result.release);
+      } else if (series.source === 'finnhub') {
+        let value = null, date = null;
+        if (series.id === 'DCOILWTICO') {
+          // Crude Oil WTI: Yahoo primary, Finnhub fallback
+          const yahoo = await fetchYahooPrice('CL=F');
+          if (yahoo && yahoo.price !== null) {
+            value = yahoo.price;
+            date = yahoo.date;
+          } else {
+            try {
+              value = await fetchFinnhubQuote('OIL');
+              date = new Date().toISOString();
+            } catch (e) {
+              value = null;
+              date = null;
+            }
+          }
+        } else if (series.id === 'DEXUSEU') {
+          // USD/EUR Rate: Finnhub primary, Yahoo fallback
+          try {
+            value = await fetchFinnhubQuote('EURUSD');
+            date = new Date().toISOString();
+          } catch (e) {
+            const yahoo = await fetchYahooPrice('EURUSD=X');
+            if (yahoo && yahoo.price !== null) {
+              value = yahoo.price;
+              date = yahoo.date;
+            }
+          }
+        } else if (series.id === 'T10Y2Y') {
+          // Yield Curve 10Y-2Y: Finnhub primary, Yahoo fallback
+          try {
+            value = await fetchFinnhubYieldCurve();
+            date = new Date().toISOString();
+          } catch (e) {
+            const yahoo = await fetchYahooPrice('US10Y=X');
+            if (yahoo && yahoo.price !== null) {
+              value = yahoo.price;
+              date = yahoo.date;
+            }
+          }
+        }
+        if (value !== null) {
+          indicators.push({
+            name: series.name,
+            seriesId: series.id,
+            value,
+            date,
+            signals: [],
+          });
+        }
       }
-    });
+    })
+  );
+  return { indicators, upcomingReleases };
+}
 
-    return { indicators, upcomingReleases };
-  } catch (error) {
-    console.error('[MACRO] FRED fetch failed:', error.message);
-    return { indicators: [], upcomingReleases: [] };
-  }
+async function fetchFinnhubQuote(symbol) {
+  const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+  if (!FINNHUB_API_KEY) throw new Error('FINNHUB_API_KEY missing');
+  const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}`;
+  const response = await fetch(url, { headers: { 'X-Finnhub-Token': FINNHUB_API_KEY } });
+  if (!response.ok) throw new Error('Finnhub quote failed');
+  const data = await response.json();
+  return data.c || null;
+}
+
+async function fetchFinnhubYieldCurve() {
+  // Example: fetch US 10Y and 2Y yields, then calculate spread
+  const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+  if (!FINNHUB_API_KEY) throw new Error('FINNHUB_API_KEY missing');
+  const url10Y = `https://finnhub.io/api/v1/quote?symbol=US10Y`; // US 10Y
+  const url2Y = `https://finnhub.io/api/v1/quote?symbol=US2Y`; // US 2Y
+  const [resp10Y, resp2Y] = await Promise.all([
+    fetch(url10Y, { headers: { 'X-Finnhub-Token': FINNHUB_API_KEY } }),
+    fetch(url2Y, { headers: { 'X-Finnhub-Token': FINNHUB_API_KEY } })
+  ]);
+  if (!resp10Y.ok || !resp2Y.ok) throw new Error('Finnhub yield fetch failed');
+  const data10Y = await resp10Y.json();
+  const data2Y = await resp2Y.json();
+  if (!data10Y.c || !data2Y.c) throw new Error('Yield data missing');
+  return parseFloat((data10Y.c - data2Y.c).toFixed(2));
 }
 
 /**

@@ -67,11 +67,14 @@ export default async function fetchRSS() {
  * Fetch a single RSS feed
  */
 async function fetchFeed(feed, cutoffTime) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
   try {
     const response = await fetch(feed.url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; IntelligenceBot/1.0)',
       },
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -122,6 +125,8 @@ async function fetchFeed(feed, cutoffTime) {
   } catch (error) {
     console.error(`[RSS] Feed ${feed.name} failed:`, error.message);
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -171,8 +176,11 @@ export async function fetchGoogleNews() {
 }
 
 async function fetchGoogleNewsFeed(feed) {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), 10000);
   const response = await fetch(feed.url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; IntelligenceBot/1.0)' },
+    signal: controller.signal,
   });
   if (!response.ok) throw new Error(`${feed.name} HTTP ${response.status}`);
 

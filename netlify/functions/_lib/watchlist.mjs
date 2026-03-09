@@ -206,7 +206,7 @@ const GDELT_HIGH_PREFIXES = ['14', '17', '18', '19', '20'];
 const GDELT_HIGH_CODES = ['0211', '0231', '0311', '1011', '1031'];
 
 /**
- * Filter GDELT events — keep only high-signal events
+ * Filter GDELT events — keep only high-signal events, return top 200 by score
  */
 export function filterGDELT(events) {
   if (!events || events.length === 0) return [];
@@ -230,7 +230,9 @@ export function filterGDELT(events) {
                              GDELT_HIGH_CODES.includes(e.category);
       e.score = 50 + (Math.abs(e.tone) * 2) + ((e.numMentions || 0) * 0.5) + (isHighPriority ? 20 : 0);
       return e;
-    });
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 200); // cap before cross-source dedup to keep RAM and CPU reasonable
 }
 
 const PRESS_HIGH_KEYWORDS = [
@@ -389,19 +391,26 @@ const STOPWORDS = new Set([
 ]);
 
 /**
- * Cross-source confirmation: boost score when same event seen in 2+ sources
+ * Cross-source confirmation: boost score when same event seen in 2+ sources.
+ * Uses an inverted fingerprint index for O(n) lookup instead of O(n²) comparison.
  */
 export function crossSourceConfirm(allEvents) {
   if (!allEvents || allEvents.length < 2) return allEvents || [];
 
-  // Extract fingerprint words for each event
-  const fingerprints = allEvents.map(event => {
+  // Build fingerprint → [event indices] index
+  const wordIndex = new Map(); // word → Set of event indices
+
+  const fingerprints = allEvents.map((event, i) => {
     const words = event.title.toLowerCase()
       .replace(/[^a-z0-9\s]/g, '')
       .split(/\s+/)
-      .slice(0, 8)
       .filter(w => !STOPWORDS.has(w) && w.length > 2)
       .slice(0, 3);
+
+    for (const word of words) {
+      if (!wordIndex.has(word)) wordIndex.set(word, []);
+      wordIndex.get(word).push(i);
+    }
     return words;
   });
 
@@ -414,10 +423,19 @@ export function crossSourceConfirm(allEvents) {
     'reddit+googlenews': 50, 'googlenews+reddit': 50,
   };
 
+  // For each event, find candidates that share at least one fingerprint word
   for (let i = 0; i < allEvents.length; i++) {
-    for (let j = i + 1; j < allEvents.length; j++) {
+    const candidates = new Set();
+    for (const word of fingerprints[i]) {
+      for (const j of wordIndex.get(word) || []) {
+        if (j > i) candidates.add(j); // only check each pair once
+      }
+    }
+
+    for (const j of candidates) {
       if (allEvents[i].source === allEvents[j].source) continue;
 
+      // Count shared fingerprint words with event j's title
       const titleJ = allEvents[j].title.toLowerCase();
       const matchCount = fingerprints[i].filter(w => titleJ.includes(w)).length;
 
@@ -445,6 +463,7 @@ export function deduplicateEvents(events) {
   // Sort by score descending first so we keep the highest-scoring version
   const sorted = [...events].sort((a, b) => b.score - a.score);
   const kept = [];
+  const keptWordSets = []; // precomputed word sets for kept items
   const seenUrls = new Set();
   const seenIds = new Set();
 
@@ -455,11 +474,12 @@ export function deduplicateEvents(events) {
     if (seenIds.has(event.id)) continue;
 
     // Rule 3: Title similarity across different sources within 2 hours
-    const isDuplicate = kept.some(existing => {
+    const eventWords = new Set(event.title.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    const isDuplicate = kept.some((existing, idx) => {
       if (existing.source === event.source) return false;
       const timeDiff = Math.abs(existing.timestamp - event.timestamp);
       if (timeDiff > 2 * 60 * 60 * 1000) return false;
-      return titleSimilarity(existing.title, event.title) > 0.8;
+      return titleSimilarityFromSets(keptWordSets[idx], eventWords) > 0.8;
     });
 
     if (isDuplicate) continue;
@@ -467,14 +487,13 @@ export function deduplicateEvents(events) {
     seenUrls.add(event.url);
     seenIds.add(event.id);
     kept.push(event);
+    keptWordSets.push(eventWords);
   }
 
   return kept;
 }
 
-function titleSimilarity(a, b) {
-  const wordsA = new Set(a.toLowerCase().split(/\s+/).filter(w => w.length > 2));
-  const wordsB = new Set(b.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+function titleSimilarityFromSets(wordsA, wordsB) {
   if (wordsA.size === 0 && wordsB.size === 0) return 1;
   const total = new Set([...wordsA, ...wordsB]).size;
   if (total === 0) return 0;

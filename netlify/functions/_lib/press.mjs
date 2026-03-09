@@ -51,45 +51,55 @@ export async function fetchPressReleases() {
  * Fetch a single press release feed
  */
 async function fetchPressFeed(feed) {
-  const response = await fetch(feed.url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; IntelligenceBot/1.0)',
-    },
-  });
-
-  if (!response.ok) throw new Error(`${feed.name} HTTP ${response.status}`);
-
-  const xml = await response.text();
-  const data = parser.parse(xml);
-
-  const channel = data.rss?.channel || data.feed;
-  if (!channel) return [];
-
-  const items = Array.isArray(channel.item) ? channel.item : [channel.item].filter(Boolean);
-  const entries = Array.isArray(channel.entry) ? channel.entry : [channel.entry].filter(Boolean);
-  const allItems = [...items, ...entries];
-
-  return allItems
-    .filter(item => item.link || item.id)
-    .map(item => {
-      const title = item.title?.toString() || '';
-      const description = stripHtml(item.description?.toString() || item.summary?.toString() || '');
-      const link = typeof item.link === 'string' ? item.link : (item.link?.href || item.id || '');
-      const pubDate = item.pubDate || item.published || item.updated;
-
-      return {
-        id: `press_${simpleHash(link)}`,
-        source: 'press',
-        title,
-        summary: description.slice(0, 500),
-        url: link,
-        timestamp: pubDate ? new Date(pubDate) : new Date(),
-        tone: 0,
-        category: 'press_release',
-        score: 0,
-        confirmed: false,
-      };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(feed.url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; IntelligenceBot/1.0)',
+      },
+      signal: controller.signal,
     });
+
+    if (!response.ok) throw new Error(`${feed.name} HTTP ${response.status}`);
+
+    const xml = await response.text();
+    const data = parser.parse(xml);
+
+    const channel = data.rss?.channel || data.feed;
+    if (!channel) return [];
+
+    const items = Array.isArray(channel.item) ? channel.item : [channel.item].filter(Boolean);
+    const entries = Array.isArray(channel.entry) ? channel.entry : [channel.entry].filter(Boolean);
+    const allItems = [...items, ...entries];
+
+    return allItems
+      .filter(item => item.link || item.id)
+      .map(item => {
+        const title = item.title?.toString() || '';
+        const description = stripHtml(item.description?.toString() || item.summary?.toString() || '');
+        const link = typeof item.link === 'string' ? item.link : (item.link?.href || item.id || '');
+        const pubDate = item.pubDate || item.published || item.updated;
+
+        return {
+          id: `press_${simpleHash(link)}`,
+          source: 'press',
+          title,
+          summary: description.slice(0, 500),
+          url: link,
+          timestamp: pubDate ? new Date(pubDate) : new Date(),
+          tone: 0,
+          category: 'press_release',
+          score: 0,
+          confirmed: false,
+        };
+      });
+  } catch (error) {
+    console.error(`[PRESS] Feed ${feed.name} failed:`, error.message);
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Strip HTML tags from a string */

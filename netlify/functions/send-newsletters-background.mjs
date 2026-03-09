@@ -38,7 +38,7 @@ export const handler = async (event) => {
   const startTime = Date.now();
 
   try {
-    // Fetch all data sources in parallel
+    // Fetch all data sources in parallel — including signal list (GDELT + press + reddit + gnews)
     console.info('[DIGEST] Fetching data from all sources...');
     
     const [
@@ -50,6 +50,7 @@ export const handler = async (event) => {
       edgarResult,
       cryptoResult,
       marketResult,
+      signalsResult,
     ] = await Promise.allSettled([
       fetchNews(),
       fetchRSS(),
@@ -59,6 +60,7 @@ export const handler = async (event) => {
       fetchEdgarFilings(),
       fetchCryptoSignals(),
       fetchMarketSignals(),
+      buildSignalList(),
     ]);
 
     // Extract successful results
@@ -70,6 +72,7 @@ export const handler = async (event) => {
     const edgarData = edgarResult.status === 'fulfilled' ? edgarResult.value : [];
     const cryptoData = cryptoResult.status === 'fulfilled' ? cryptoResult.value : [];
     const marketData = marketResult.status === 'fulfilled' ? marketResult.value : [];
+    const signals = signalsResult.status === 'fulfilled' ? signalsResult.value : [];
 
     console.info('[DIGEST] Data collection complete:', {
       news: newsData.globalNews?.length || 0,
@@ -80,6 +83,7 @@ export const handler = async (event) => {
       edgar: edgarData.length || 0,
       crypto: cryptoData.length || 0,
       market: marketData.length || 0,
+      signals: signals.length || 0,
     });
 
     // Combine all data
@@ -123,15 +127,10 @@ export const handler = async (event) => {
       };
     }
 
-    // Fetch Phase 4 intelligence signals
-    console.info('[DIGEST] Building intelligence signal list...');
-    let signals = [];
-    try {
-      signals = await buildSignalList();
-      console.info(`[DIGEST] Got ${signals.length} signals (${signals.filter(s => s.confirmed).length} confirmed)`);
-    } catch (err) {
-      console.error('[DIGEST] Signal list failed (non-fatal):', err.message);
+    if (signalsResult.status === 'rejected') {
+      console.error('[DIGEST] Signal list failed (non-fatal):', signalsResult.reason?.message);
     }
+    console.info(`[DIGEST] Got ${signals.length} signals (${signals.filter(s => s.confirmed).length} confirmed)`);
     updatedData.signals = signals;
 
     // Generate newsletter content

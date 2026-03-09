@@ -40,9 +40,24 @@ export default async function generateContent(type, data) {
 /**
  * Trim data arrays to safe limits before sending to OpenAI.
  * GDELT alone can generate 15,000+ events — we only need the top signals.
+ * Signals are split by source so every source type is guaranteed representation.
  */
 function trimDataForPrompt(data) {
   const cap = (arr, n) => Array.isArray(arr) ? arr.slice(0, n) : arr;
+
+  // Split signals by source, take top N from each, then recombine
+  const signalsBySource = {};
+  for (const s of (data.signals || [])) {
+    if (!signalsBySource[s.source]) signalsBySource[s.source] = [];
+    signalsBySource[s.source].push(s);
+  }
+  const signals = [
+    ...(signalsBySource.gdelt       || []).slice(0, 5),
+    ...(signalsBySource.press       || []).slice(0, 5),
+    ...(signalsBySource.googlenews  || []).slice(0, 8),
+    ...(signalsBySource.reddit      || []).slice(0, 5),
+  ];
+
   return {
     ...data,
     // Main news sections — 10 each is sufficient
@@ -62,8 +77,7 @@ function trimDataForPrompt(data) {
     cryptoSignals:    cap(data.cryptoSignals,     8),
     marketSignals:    cap(data.marketSignals,     8),
     watchlistHits:    cap(data.watchlistHits,     10),
-    // Intelligence signals — send top 20 by score (already sorted)
-    signals:          cap(data.signals,           20),
+    signals,
   };
 }
 
@@ -88,7 +102,9 @@ Sections (use <h2> tags):
 2.  🌍 Global News
 3.  💻 Technology
 4.  📈 Economy & Markets
-5.  📅 Macro Calendar           — upcoming releases + active indicator signals
+5.  📅 Macro Calendar           — ALWAYS show all indicators from data.indicators (name, value, date, signals).
+                                  Then list any items in data.upcomingReleases.
+                                  Show every indicator even if its signals array is empty.
 6.  🗺️  Regional Intelligence   — one sub-section per active region in the data
                                   e.g. <h3>🇧🇬 Bulgaria</h3>, <h3>🇪🇺 European Union</h3>, <h3>🛡️ NATO & Defence</h3>
                                   Only render sub-sections that have data. Skip empty regions.

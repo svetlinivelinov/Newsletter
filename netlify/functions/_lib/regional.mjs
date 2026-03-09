@@ -132,11 +132,14 @@ export default async function fetchRegionalFeeds() {
  * Fetch a single regional RSS feed
  */
 async function fetchFeed(feed, cutoffTime, activeRegions) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
   try {
     const response = await fetch(feed.url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; IntelligenceBot/1.0)',
       },
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -207,5 +210,7 @@ async function fetchFeed(feed, cutoffTime, activeRegions) {
   } catch (error) {
     console.error(`[REGIONAL] Feed ${feed.name} (${feed.region}) failed:`, error.message);
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }

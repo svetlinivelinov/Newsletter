@@ -68,8 +68,36 @@ async function fetchSingleGDELTExport(url) {
   }
 }
 
+// GDELT v2 CAMEO root code → human-readable description
+const CAMEO_ROOT = {
+  '01': 'Statement',
+  '02': 'Appeal',
+  '03': 'Intent to cooperate',
+  '04': 'Consultation',
+  '05': 'Diplomatic cooperation',
+  '06': 'Material cooperation',
+  '07': 'Aid provided',
+  '08': 'Yield/Concession',
+  '09': 'Investigation',
+  '10': 'Demand',
+  '11': 'Criticism',
+  '12': 'Rejection',
+  '13': 'Threat',
+  '14': 'Protest',
+  '15': 'Military posture',
+  '16': 'Reduced relations',
+  '17': 'Coercion',
+  '18': 'Assault',
+  '19': 'Armed conflict',
+  '20': 'Mass violence',
+};
+
 /**
- * Parse TSV rows into event objects
+ * Parse TSV rows into event objects.
+ * GDELT v2 export column layout (61 cols, 0-indexed):
+ *   0:GlobalEventID  1:SQLDATE  6:Actor1Name  16:Actor2Name
+ *   26:EventCode  28:EventRootCode  31:NumMentions  34:AvgTone
+ *   52:ActionGeo_FullName  60:SOURCEURL
  * @param {string} tsvText - Tab-separated values text
  * @returns {Array} Array of event objects
  */
@@ -81,27 +109,48 @@ function parseTSVRows(tsvText) {
     const cols = row.split('\t');
     if (cols.length < 61) continue;
 
-    const eventId = cols[0];
-    const sqlDate = cols[1];
-    const eventCode = cols[26] || '';
+    const eventId     = cols[0];
+    const sqlDate     = cols[1];
+    const actor1      = cols[6]  || '';
+    const actor2      = cols[16] || '';
+    const eventCode   = cols[26] || '';
+    const rootCode    = cols[28] || eventCode.slice(0, 2);
     const numMentions = parseInt(cols[31], 10) || 0;
-    const avgTone = parseFloat(cols[34]) || 0;
-    const sourceUrl = cols[60] || '';
+    const avgTone     = parseFloat(cols[34]) || 0;
+    const location    = cols[52] || '';   // ActionGeo_FullName
+    const sourceUrl   = cols[60] || '';
 
     // Skip rows without a valid URL
     if (!sourceUrl || !sourceUrl.startsWith('http')) continue;
 
+    // Build a human-readable title from actors + event type + location
+    const eventDesc = CAMEO_ROOT[rootCode] || `Event ${eventCode}`;
+    const domain = sourceUrl.match(/https?:\/\/(?:www\.)?([^/]+)/)?.[1] || '';
+    let title;
+    if (actor1 && actor2) {
+      title = `${actor1} — ${eventDesc} — ${actor2}`;
+      if (location) title += ` (${location})`;
+    } else if (actor1) {
+      title = `${actor1}: ${eventDesc}`;
+      if (location) title += ` in ${location}`;
+    } else {
+      title = location ? `${eventDesc} in ${location}` : `${eventDesc} [${domain}]`;
+    }
+
+    const toneLabel = avgTone < -5 ? 'very negative' : avgTone < -2 ? 'negative' : avgTone < 0 ? 'slightly negative' : 'neutral';
+    const summary = `${numMentions} source${numMentions !== 1 ? 's' : ''} covered this event. Sentiment: ${avgTone.toFixed(1)} (${toneLabel}).${domain ? ` Via ${domain}.` : ''}`;
+
     // Parse YYYYMMDD to Date
-    const year = sqlDate.substring(0, 4);
+    const year  = sqlDate.substring(0, 4);
     const month = sqlDate.substring(4, 6);
-    const day = sqlDate.substring(6, 8);
+    const day   = sqlDate.substring(6, 8);
     const timestamp = new Date(`${year}-${month}-${day}T00:00:00Z`);
 
     events.push({
       id: `gdelt_${eventId}`,
       source: 'gdelt',
-      title: `GDELT Event ${eventCode} — ${eventId}`,
-      summary: `EventCode: ${eventCode}, Mentions: ${numMentions}, Tone: ${avgTone.toFixed(1)}`,
+      title,
+      summary,
       url: sourceUrl,
       timestamp,
       tone: avgTone,
@@ -114,6 +163,7 @@ function parseTSVRows(tsvText) {
 
   return events;
 }
+
 
 /**
  * Fetch and parse the last 24 hours of GDELT event data

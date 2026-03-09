@@ -1,6 +1,6 @@
 Intelligence Pipeline — Phase 4
 Detailed Implementation Guide for VS Code Copilot
-New Sources: GDELT · Press Releases · Twitter · Google News
+New Sources: GDELT · Press Releases · REDDIT · Google News
 
 
 
@@ -15,7 +15,7 @@ your-project/
 │       └── _lib/
 │           ├── gdelt.mjs          ← CREATE (Section 2)
 │           ├── press.mjs          ← CREATE (Section 3)
-│           └── twitter.mjs        ← CREATE (Section 4)
+│           └── reddit.mjs        ← CREATE (Section 4)
 ├── rss.mjs                        ← EDIT   (Section 5)
 ├── watchlist.mjs                  ← EDIT   (Section 6)
 ├── send-newsletters.mjs           ← EDIT   (Section 8)
@@ -43,10 +43,10 @@ Normalized Event Object (shared contract between all layers)
 ⚠️  Every ingestion module MUST return events in exactly this shape. The filter and scoring layers depend on it.
 {
   id:         String,   // unique hash (source + timestamp + title)
-  source:     String,   // 'gdelt' | 'press' | 'twitter' | 'googlenews' | 'rss'
+  source:     String,   // 'gdelt' | 'press' | 'REDDIT' | 'googlenews' | 'rss'
   title:      String,   // headline or event summary
-  summary:    String,   // full description or tweet text
-  url:        String,   // original article/tweet URL
+  summary:    String,   // full description or post text
+  url:        String,   // original article/post URL
   timestamp:  Date,     // JavaScript Date object (UTC)
   tone:       Number,   // GDELT tone score (0 for non-GDELT sources)
   category:   String,   // GDELT event code or inferred category
@@ -167,55 +167,59 @@ Expected Export
 export async function fetchPressReleases() { ... }
 // Returns: Promise<NormalizedEvent[]>
 
-Section 4 — twitter.mjs (Ingestion — Optional)
-⚠️  This module requires a paid Twitter API v2 Bearer Token. Skip this section if you don't have API access. The rest of the system works without it.
-File to create: netlify/functions/_lib/twitter.mjs
+Section 4 — reddit.mjs (Ingestion — Optional)
+⚠️  This module requires Reddit script-app OAuth credentials. Skip this section if you don't have API access. The rest of the system works without it.
+File to create: netlify/functions/_lib/reddit.mjs
 
 What This File Does
-    • Connects to the Twitter v2 filtered stream endpoint.
+    • Connects to the Reddit filtered stream endpoint.
     • Tracks a predefined set of breaking news keywords.
-    • Buffers incoming tweets and returns them as normalized events.
+    • Buffers incoming posts and returns them as normalized events.
     • Falls back gracefully if API key is missing — returns empty array.
 
 Environment Variable Required
-TWITTER_BEARER_TOKEN=your_token_here   // set in Netlify environment variables
+REDDIT_CLIENT_ID=your_client_id
+REDDIT_CLIENT_SECRET=your_client_secret
+REDDIT_USERNAME=your_reddit_username
+REDDIT_PASSWORD=your_reddit_password
+REDDIT_USER_AGENT=IntelligenceNewsletter/1.0 by u/your_reddit_username
 
 Tracked Keywords (Stream Rules)
 breaking, explosion, earthquake, shooting, attack,
 protest, strike, emergency, evacuation, outbreak,
 cyberattack, sanctions, collapse, riot, flooding
 
-Copilot Prompt — Paste into twitter.mjs
+Copilot Prompt — Paste into reddit.mjs
 💬  Create the file first, open it in VS Code, then paste this prompt.
 // Copilot: Generate the full contents of this file.
 //
-// FILE: netlify/functions/_lib/twitter.mjs
-// PURPOSE: Fetch recent tweets matching breaking-news keywords via Twitter API v2
+// FILE: netlify/functions/_lib/reddit.mjs
+// PURPOSE: Fetch recent posts matching breaking-news keywords via Reddit API
 //
 // REQUIREMENTS:
-// 1. Export one async function: fetchTweets()
-// 2. Read TWITTER_BEARER_TOKEN from process.env.
+// 1. Export one async function: fetchposts()
+// 2. Read REDDIT_API from process.env.
 //    — If missing or empty, log a warning and return [].
-// 3. Use the Twitter v2 recent search endpoint (NOT the stream):
-//    GET https://api.twitter.com/2/tweets/search/recent
+// 3. Use the Reddit recent search endpoint (NOT the stream):
+//    GET https://api.REDDIT.com/2/posts/search/recent
 //    — This is simpler and works without stream setup.
 //    — Query: '(breaking OR explosion OR earthquake OR shooting OR attack OR
 //      protest OR strike OR emergency OR evacuation OR outbreak OR
 //      cyberattack OR sanctions OR collapse OR riot OR flooding)
-//      -is:retweet lang:en'
-//    — Fields: tweet.fields=created_at,public_metrics,author_id
+//      -is:repost lang:en'
+//    — Fields: post.fields=created_at,public_metrics,author_id
 //    — max_results: 50
-// 4. Normalize each tweet to this shape:
+// 4. Normalize each post to this shape:
 //    {
-//      id:        `twitter_${tweet.id}`,
-//      source:    'twitter',
-//      title:     tweet.text.slice(0, 100),
-//      summary:   tweet.text,
-//      url:       `https://twitter.com/i/web/status/${tweet.id}`,
-//      timestamp: new Date(tweet.created_at),
+//      id:        `REDDIT_${post.id}`,
+//      source:    'REDDIT',
+//      title:     post.text.slice(0, 100),
+//      summary:   post.text,
+//      url:       `https://REDDIT.com/i/web/status/${post.id}`,
+//      timestamp: new Date(post.created_at),
 //      tone:      0,
-//      category:  'tweet',
-//      score:     tweet.public_metrics?.retweet_count || 0,
+//      category:  'post',
+//      score:     post.public_metrics?.repost_count || 0,
 //      confirmed: false,
 //    }
 // 5. Return the normalized array.
@@ -223,8 +227,8 @@ Copilot Prompt — Paste into twitter.mjs
 // 7. Use ES module syntax (import/export), no require().
 
 Expected Export
-// twitter.mjs must export:
-export async function fetchTweets() { ... }
+// reddit.mjs must export:
+export async function fetchposts() { ... }
 // Returns: Promise<NormalizedEvent[]>
 
 Section 5 — rss.mjs (Edit Existing File)
@@ -338,12 +342,12 @@ Filter 2: filterPressReleases(events)
 // 3. Set event.score = computed score.
 // 4. Return filtered + scored array.
 
-Filter 3: filterTweets(events)
+Filter 3: filterposts(events)
 // Copilot: Add this function to watchlist.mjs
 //
-// FUNCTION: filterTweets(events)
-// INPUT:  Array of NormalizedEvent from fetchTweets()
-// OUTPUT: Filtered array — only high-signal breaking news tweets
+// FUNCTION: filterposts(events)
+// INPUT:  Array of NormalizedEvent from fetchposts()
+// OUTPUT: Filtered array — only high-signal breaking news posts
 //
 // STEP 1 — Remove noise (discard if any of these match):
 //   - summary contains: 'giveaway', 'follow me', 'click here', 'RT to win',
@@ -351,15 +355,15 @@ Filter 3: filterTweets(events)
 //   - summary is shorter than 30 characters
 //   - summary contains more than 5 hashtags
 //
-// STEP 2 — Score remaining tweets:
+// STEP 2 — Score remaining posts:
 //   base score = 10
-//   + (retweet_count > 1000 ? 40 : retweet_count > 100 ? 20 : 5)
+//   + (repost_count > 1000 ? 40 : repost_count > 100 ? 20 : 5)
 //   + (keyword intensity: count matching breaking-news keywords * 10)
 //   Breaking-news keywords: explosion, earthquake, shooting, attack, protest,
 //   strike, emergency, evacuation, outbreak, cyberattack, sanctions, collapse,
 //   riot, flooding, bombing, coup, invasion
 //
-// STEP 3 — Keep only tweets with score >= 20
+// STEP 3 — Keep only posts with score >= 20
 //
 // STEP 4 — Set event.score and return filtered array.
 
@@ -403,7 +407,7 @@ Cross-Source Confirmation
 //    — If 2+ fingerprint words of A appear in B.title (case-insensitive),
 //      mark BOTH as confirmed=true
 //    — Add score bonus: +50 for GDELT+RSS match, +40 for press+RSS,
-//      +60 for tweet+GDELT, +30 for any other cross-source match
+//      +60 for post+GDELT, +30 for any other cross-source match
 // 3. Return updated array.
 
 Deduplication
@@ -432,12 +436,12 @@ Master Orchestrator Function
 // 1. Import at top of file:
 //    import { fetchGDELT } from './netlify/functions/_lib/gdelt.mjs'
 //    import { fetchPressReleases } from './netlify/functions/_lib/press.mjs'
-//    import { fetchTweets } from './netlify/functions/_lib/twitter.mjs'
+//    import { fetchposts } from './netlify/functions/_lib/reddit.mjs'
 //    import { fetchGoogleNews } from './rss.mjs'
 //
 // 2. Fetch all sources in parallel:
-//    const [gdeltRaw, pressRaw, tweetRaw, gnewsRaw] = await Promise.allSettled([
-//      fetchGDELT(), fetchPressReleases(), fetchTweets(), fetchGoogleNews()
+//    const [gdeltRaw, pressRaw, postRaw, gnewsRaw] = await Promise.allSettled([
+//      fetchGDELT(), fetchPressReleases(), fetchposts(), fetchGoogleNews()
 //    ])
 //    — Use .allSettled (not .all) so one failure doesn't stop the rest
 //    — Extract .value from fulfilled, use [] for rejected
@@ -445,11 +449,11 @@ Master Orchestrator Function
 // 3. Filter each source:
 //    const gdeltFiltered  = filterGDELT(gdeltRaw)
 //    const pressFiltered  = filterPressReleases(pressRaw)
-//    const tweetFiltered  = filterTweets(tweetRaw)
+//    const postFiltered  = filterposts(postRaw)
 //    const gnewsFiltered  = filterGoogleNews(gnewsRaw)
 //
 // 4. Merge into one array:
-//    const all = [...gdeltFiltered, ...pressFiltered, ...tweetFiltered, ...gnewsFiltered]
+//    const all = [...gdeltFiltered, ...pressFiltered, ...postFiltered, ...gnewsFiltered]
 //
 // 5. Cross-source confirm:
 //    const confirmed = crossSourceConfirm(all)
@@ -479,7 +483,7 @@ Copilot Prompt — Paste into send-newsletters.mjs (with file open)
 // 2. Split signals by source for separate sections:
 //    const gdeltSignals  = signals.filter(e => e.source === 'gdelt').slice(0, 5)
 //    const pressSignals  = signals.filter(e => e.source === 'press').slice(0, 5)
-//    const tweetSignals  = signals.filter(e => e.source === 'twitter').slice(0, 5)
+//    const postsignals  = signals.filter(e => e.source === 'REDDIT').slice(0, 5)
 //    const gnewsSignals  = signals.filter(e => e.source === 'googlenews').slice(0, 5)
 //    const topSignals    = signals.filter(e => e.confirmed).slice(0, 3)
 //
@@ -497,9 +501,9 @@ Copilot Prompt — Paste into send-newsletters.mjs (with file open)
 //    — Show top 5 press releases
 //    — For each: title, summary, link
 //
-//    SECTION D: 'Real-Time Signals'  (only if tweetSignals.length > 0)
-//    — Show top 5 tweets
-//    — For each: text preview, retweet count, link
+//    SECTION D: 'Real-Time Signals'  (only if postsignals.length > 0)
+//    — Show top 5 posts
+//    — For each: text preview, repost count, link
 //
 //    SECTION E: 'Breaking Headlines (Google News)'
 //    — Show top 5 headlines
@@ -537,8 +541,8 @@ Copilot Prompt — Paste into ai.mjs (with file open)
 //    [CORPORATE - PRESS RELEASES]
 //    {pressSignals.map(s => `- ${s.title} | ${s.url}`)}
 //
-//    [REAL-TIME - TWITTER]
-//    {tweetSignals.map(s => `- ${s.summary.slice(0,120)} | ${s.url}`)}
+//    [REAL-TIME - REDDIT]
+//    {postsignals.map(s => `- ${s.summary.slice(0,120)} | ${s.url}`)}
 //
 //    [BREAKING - GOOGLE NEWS]
 //    {gnewsSignals.map(s => `- ${s.title} | ${s.url}`)}
@@ -546,7 +550,7 @@ Copilot Prompt — Paste into ai.mjs (with file open)
 //
 // 4. Update the system prompt to include:
 //    'You have access to early intelligence signals from GDELT, press releases,
-//    Twitter, and Google News — often ahead of mainstream media.
+//    REDDIT, and Google News — often ahead of mainstream media.
 //    Highlight any CONFIRMED cross-source signals prominently.
 //    Use tone scores to gauge severity: below -3 indicates a serious event.'
 //
@@ -579,8 +583,8 @@ Cannot find package 'unzipper'
 Run: npm install unzipper in your project root
 fetch is not defined
 Add: import fetch from 'node-fetch' at top of file, or ensure Node 18+
-TWITTER_BEARER_TOKEN not set
-Add it to your .env file and Netlify environment variables
+REDDIT_CLIENT_ID/SECRET/USERNAME/PASSWORD not set
+Add Reddit OAuth script-app credentials to .env and Netlify environment variables
 GDELT returns 0 events
 The 15-min feed URL changes — re-check lastupdate.txt for the current URL
 Promise.allSettled returns rejected
@@ -595,15 +599,15 @@ Phase 1 — New Ingestion Files
     • [ ] Test: fetchGDELT() returns events array
     • [ ] Create netlify/functions/_lib/press.mjs using Section 3 prompt
     • [ ] Test: fetchPressReleases() returns events array
-    • [ ] (Optional) Create netlify/functions/_lib/twitter.mjs using Section 4 prompt
-    • [ ] Add TWITTER_BEARER_TOKEN to .env if using Twitter
+    • [ ] (Optional) Create netlify/functions/_lib/reddit.mjs using Section 4 prompt
+    • [ ] Add REDDIT_CLIENT_ID/SECRET/USERNAME/PASSWORD to .env if using REDDIT
 
 Phase 2 — Edit Existing Files
     • [ ] Open rss.mjs and add fetchGoogleNews() using Section 5 prompt
     • [ ] Test: fetchGoogleNews() returns events array
     • [ ] Open watchlist.mjs and add filterGDELT() using Section 6
     • [ ] Open watchlist.mjs and add filterPressReleases() using Section 6
-    • [ ] Open watchlist.mjs and add filterTweets() using Section 6
+    • [ ] Open watchlist.mjs and add filterposts() using Section 6
     • [ ] Open watchlist.mjs and add filterGoogleNews() using Section 6
 
 Phase 3 — Scoring & Orchestration

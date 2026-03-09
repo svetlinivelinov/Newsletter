@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Manually trigger the newsletter send without waiting for the 07:00 UTC cron job.
+  Manually trigger the newsletter send without waiting for the 05:30 UTC cron job.
 
 .DESCRIPTION
   Runs the newsletter function directly via Node.js using your local .env.

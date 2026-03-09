@@ -10,9 +10,9 @@
 [functions]
   node_bundler = "esbuild"
 
-# Phase 1 — Daily digest at 07:00 UTC (background function: up to 15 min)
+# Phase 1 — Daily digest at 05:30 UTC (background function: up to 15 min)
 [functions."send-newsletters-background"]
-  schedule = "0 7 * * *"
+  schedule = "30 5 * * *"
 
 # Security headers
 [[headers]]

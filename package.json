@@ -2,7 +2,7 @@
   "name": "ai-early-signal-newsletter",
   "version": "1.0.0",
   "type": "module",
-  "description": "AI-powered intelligence newsletter platform with multi-tier alert system",
+  "description": "AI-powered intelligence newsletter with 16+ sources, cross-source confirmation, and signal scoring",
   "scripts": {
     "dev": "netlify dev",
     "build": "echo 'No build step required'",

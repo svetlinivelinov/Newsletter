@@ -1,12 +1,14 @@
 # AI Early Signal Intelligence Newsletter
 
-Production-ready intelligence newsletter platform deployed on Netlify. Monitors 12+ data sources, detects market-moving signals, and delivers them via a 3-tier alert system.
+Production-ready intelligence newsletter platform deployed on Netlify. Monitors 16+ data sources including GDELT global events, press releases, Google News, and REDDIT, with cross-source confirmation and intelligent signal scoring.
 
-## Current Phase: Phase 1 — Daily Digest
+## Current Phase: Phase 4 — Multi-Source Intelligence
 
-**Status:** Working newsletter with all data sources, sent once per day.
-**Storage:** Netlify Blobs only.
-**Cron:** Daily digest at 07:00 UTC.
+**Status:** ✅ Production-ready with real-time signal detection
+**Sources:** 16+ including GDELT, press releases, Google News, REDDIT (optional), RSS, EDGAR, contracts, crypto, stocks  
+**Intelligence:** Cross-source confirmation, severity scoring, deduplication  
+**Storage:** Netlify Blobs  
+**Cron:** Daily digest at 05:30 UTC via GitHub Actions + Netlify
 
 ## Quick Start
 
@@ -73,11 +75,14 @@ project-root/
     └── functions/
         ├── subscribe.mjs         # POST /subscribe
         ├── unsubscribe.mjs       # GET /unsubscribe?token=xxx
-        ├── send-newsletters.mjs  # CRON daily digest 07:00 UTC
+        ├── send-newsletters.mjs  # CRON daily digest 05:30 UTC
         └── _lib/                 # Shared library modules
             ├── news.mjs          # Bing Search
-            ├── rss.mjs           # RSS parser
+            ├── rss.mjs           # RSS parser + Google News
             ├── regional.mjs      # Regional RSS feeds
+            ├── gdelt.mjs         # GDELT 15-min event feed
+            ├── press.mjs         # Press release wires
+            ├── reddit.mjs       # Reddit search (optional)
             ├── macro.mjs         # FRED API
             ├── contracts.mjs     # SAM.gov + USASpending
             ├── edgar.mjs         # SEC EDGAR
@@ -108,39 +113,39 @@ project-root/
 
 *EDGAR requires User-Agent header, not an API key.
 
+## Data Sources
+
+**Early Signals (Phase 4 — ✅ Implemented):**
+- 🌍 **GDELT** — 15-minute global event feed (protest, conflict, cyberattack, emergency)
+- 📢 **Press Releases** — PRNewswire, BusinessWire, GlobeNewswire (M&A, earnings, FDA, SEC)
+- 📰 **Google News** — Top stories, World, Business, Technology
+- ⚡ **REDDIT** — Real-time breaking news (optional, via script-app OAuth credentials)
+
+**Intelligence Sources (Phase 1):**
+- 📊 **Financial Markets** — Finnhub stock signals, CoinGecko crypto signals
+- 🏛️ **Government** — SEC EDGAR filings, SAM.gov contracts, USASpending awards
+- 📈 **Macro** — FRED indicators (inflation, employment, GDP)
+- 🗺️ **Regional** — Bulgaria, EU, NATO dedicated feeds
+- 📰 **News** — Bing Search, RSS newswires, central banks
+
+**Signal Processing:**
+- Cross-source confirmation (when 2+ sources report same event → +30 to +60 score boost)
+- Severity scoring (normalized 0-100 scale)
+- Intelligent deduplication (URL, ID, title similarity)
+- CAMEO event code filtering for GDELT
+- Keyword-based filtering for press/news/posts
+
+## Next Steps
+
+**Phase 2** (Breaking Alerts):
+- Real-time TIER 1 signal alerts every 30 minutes
+- Upstash Redis for deduplication
+
+**Phase 3** (Preferences & History):
+- Midday signal bundle
+- Subscriber preferences (choose alert tiers)
+- Supabase database + send history
+
 ## License
 
 ISC
-
-Future plan
-
-If you want to be truly ahead of mainstream media:
-Add GDELT + Press Releases
-These two alone will give you:
-- Early signals
-- Global coverage
-- Raw information before journalists rewrite it
-Then use AI to:
-- Filter
-- Summarize
-- Rank by importance
-- Turn into a clean briefing
-That’s how you build a real intelligence system, not just another news digest
-
-Yes — if your goal is to be ahead of mainstream news, you need at least one early-signal source.
-Here’s the ranking of what will give you the biggest advantage:
-
-
-![alt text](image.png) in keep
-
-🧭 My recommendation for your app
-Given your current stack, the single best next addition is:
-➤ GDELT + Press Releases
-This combination gives you:
-- Global early signals
-- Corporate early signals
-- Zero cost
-- No API keys
-- High-frequency updates
-- Perfect raw material for AI summarization
-This is how you build a true intelligence briefing system, not just another news aggregator.

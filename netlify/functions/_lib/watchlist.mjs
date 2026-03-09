@@ -5,7 +5,7 @@
 
 import { fetchGDELT } from './gdelt.mjs';
 import { fetchPressReleases } from './press.mjs';
-import { fetchTweets } from './twitter.mjs';
+import { fetchRedditBreaking } from './reddit.mjs';
 import { fetchGoogleNews } from './rss.mjs';
 
 /**
@@ -234,53 +234,106 @@ export function filterGDELT(events) {
 }
 
 const PRESS_HIGH_KEYWORDS = [
-  'acquisition', 'merger', 'acquires', 'bankruptcy', 'fda approval', 'fda clears',
-  'sec charges', 'class action', 'recall', 'settlement', 'indictment',
+  'acquisition', 'acquires', 'merger', 'merges', 'takeover',
+  'bankruptcy', 'chapter 11', 'restructuring',
+  'fda approval', 'fda clears', 'clinical trial', 'phase 1', 'phase 2', 'phase 3',
+  'sec charges', 'sec investigation', 'ftc', 'doj', 'antitrust',
+  'class action', 'settlement', 'indictment',
+  'data breach', 'cybersecurity', 'ransomware', 'hack',
+  'recall', 'profit warning', 'guidance cut',
+  'layoffs', 'workforce reduction'
 ];
 const PRESS_MEDIUM_KEYWORDS = [
-  'earnings', 'quarterly results', 'revenue', 'guidance', 'forecast', 'partnership',
-  'strategic alliance', 'joint venture', 'ipo', 'funding', 'raises $',
-  'series a', 'series b', 'series c',
+  'earnings', 'quarterly results', 'revenue', 'guidance', 'forecast',
+  'ipo', 'listing', 'delisting',
+  'funding', 'raises $', 'series a', 'series b', 'series c',
+  'contract', 'government contract', 'award',
+  'supply chain', 'production', 'facility closure',
+  'ceo resigns', 'cfo resigns', 'leadership change',
+  'strategic alliance', 'joint venture', 'partnership'
 ];
 const PRESS_LOW_KEYWORDS = [
-  'new product', 'launch', 'appoints', 'names ceo', 'names cfo', 'expands',
+  'appoints', 'names ceo', 'names cfo', 'expands',
+  'new product', 'launch'
+];
+const PRESS_NEGATIVE_KEYWORDS = [
+  'valentine', 'holiday', 'christmas', 'black friday',
+  'influencer', 'beauty brand', 'skincare', 'fragrance',
+  'fashion', 'apparel', 'footwear', 'sneakers',
+  'survey', 'study finds', 'report shows',
+  'award', 'ranking', 'best workplace',
+  'grand opening', 'store opening',
+  'promo', 'promotion', 'discount', 'sale',
+  'celebrates', 'anniversary'
 ];
 
 /**
- * Filter press releases — keep financially/strategically relevant items
+ * Filter press release item — returns boolean pass/fail
  */
-export function filterPressReleases(events) {
-  if (!events || events.length === 0) return [];
+export function filterPress(item, watchlistCompanies = []) {
+  const text = (item.title + ' ' + item.summary).toLowerCase();
 
-  return events
-    .map(e => {
-      const text = `${e.title} ${e.summary}`.toLowerCase();
-      let score = 0;
-      if (PRESS_HIGH_KEYWORDS.some(kw => text.includes(kw))) score += 30;
-      if (PRESS_MEDIUM_KEYWORDS.some(kw => text.includes(kw))) score += 15;
-      if (PRESS_LOW_KEYWORDS.some(kw => text.includes(kw))) score += 5;
-      e.score = score;
-      return e;
-    })
-    .filter(e => e.score > 0);
+  // 1. Hard reject if negative keyword appears
+  if (PRESS_NEGATIVE_KEYWORDS.some(k => text.includes(k))) {
+    return false;
+  }
+
+  let score = 0;
+
+  // 2. High-value keywords → strong signal
+  if (PRESS_HIGH_KEYWORDS.some(k => text.includes(k))) {
+    score += 5;
+  }
+
+  // 3. Medium-value keywords → moderate signal
+  if (PRESS_MEDIUM_KEYWORDS.some(k => text.includes(k))) {
+    score += 3;
+  }
+
+  // 4. Low-value keywords → weak signal
+  if (PRESS_LOW_KEYWORDS.some(k => text.includes(k))) {
+    score += 1;
+  }
+
+  // 5. Company name boost (only if in watchlist)
+  for (const company of watchlistCompanies) {
+    if (company && text.includes(company.toLowerCase())) {
+      score += 2;
+    }
+  }
+
+  // 6. Final decision threshold
+  //    - High keyword alone passes (score >= 5)
+  //    - Medium keyword + company name passes (>= 5)
+  //    - Low keyword alone does NOT pass
+  //    - No keyword → reject
+  return score >= 5;
 }
 
-const TWEET_NOISE = [
+/**
+ * Filter press releases array — wrapper for filterPress
+ */
+export function filterPressReleases(events, watchlistCompanies = []) {
+  if (!events || events.length === 0) return [];
+  return events.filter(e => filterPress(e, watchlistCompanies));
+}
+
+const REDDIT_NOISE = [
   'giveaway', 'follow me', 'click here', 'rt to win',
   'discount', 'promo', 'subscribe', '#ad', '#sponsored',
 ];
 
 /**
- * Filter tweets — keep only high-signal breaking news
+ * Filter Reddit posts — keep only high-signal breaking posts
  */
-export function filterTweets(events) {
+export function filterReddit(events) {
   if (!events || events.length === 0) return [];
 
   return events
     .filter(e => {
       const text = e.summary.toLowerCase();
       // Remove noise
-      if (TWEET_NOISE.some(n => text.includes(n))) return false;
+      if (REDDIT_NOISE.some(n => text.includes(n))) return false;
       if (e.summary.length < 30) return false;
       if ((text.match(/#/g) || []).length > 5) return false;
       return true;
@@ -288,8 +341,8 @@ export function filterTweets(events) {
     .map(e => {
       const text = e.summary.toLowerCase();
       let score = 10;
-      const retweetCount = e.score || 0; // score was initially set to retweet_count
-      score += retweetCount > 1000 ? 40 : retweetCount > 100 ? 20 : 5;
+      const upvoteCount = e.score || 0; // score is initially post upvotes
+      score += upvoteCount > 1000 ? 40 : upvoteCount > 100 ? 20 : 5;
       const keywordHits = BREAKING_KEYWORDS.filter(kw => text.includes(kw)).length;
       score += keywordHits * 10;
       e.score = score;
@@ -357,8 +410,8 @@ export function crossSourceConfirm(allEvents) {
     'gdelt+googlenews': 50, 'googlenews+gdelt': 50,
     'press+googlenews': 40, 'googlenews+press': 40,
     'press+rss': 40, 'rss+press': 40,
-    'twitter+gdelt': 60, 'gdelt+twitter': 60,
-    'twitter+googlenews': 50, 'googlenews+twitter': 50,
+    'reddit+gdelt': 60, 'gdelt+reddit': 60,
+    'reddit+googlenews': 50, 'googlenews+reddit': 50,
   };
 
   for (let i = 0; i < allEvents.length; i++) {
@@ -438,40 +491,40 @@ function titleSimilarity(a, b) {
 export async function buildSignalList() {
   console.info('[SIGNALS] Building signal list from all sources...');
 
-  const [gdeltRaw, pressRaw, tweetRaw, gnewsRaw] = await Promise.allSettled([
+  const [gdeltRaw, pressRaw, redditRaw, gnewsRaw] = await Promise.allSettled([
     fetchGDELT(),
     fetchPressReleases(),
-    fetchTweets(),
+    fetchRedditBreaking(),
     fetchGoogleNews(),
   ]);
 
   const gdeltEvents = gdeltRaw.status === 'fulfilled' ? gdeltRaw.value : [];
   const pressEvents = pressRaw.status === 'fulfilled' ? pressRaw.value : [];
-  const tweetEvents = tweetRaw.status === 'fulfilled' ? tweetRaw.value : [];
+  const redditEvents = redditRaw.status === 'fulfilled' ? redditRaw.value : [];
   const gnewsEvents = gnewsRaw.status === 'fulfilled' ? gnewsRaw.value : [];
 
   console.info('[SIGNALS] Raw counts:', {
     gdelt: gdeltEvents.length,
     press: pressEvents.length,
-    twitter: tweetEvents.length,
+    reddit: redditEvents.length,
     googlenews: gnewsEvents.length,
   });
 
   // Filter each source
   const gdeltFiltered = filterGDELT(gdeltEvents);
   const pressFiltered = filterPressReleases(pressEvents);
-  const tweetFiltered = filterTweets(tweetEvents);
+  const redditFiltered = filterReddit(redditEvents);
   const gnewsFiltered = filterGoogleNews(gnewsEvents);
 
   console.info('[SIGNALS] Filtered counts:', {
     gdelt: gdeltFiltered.length,
     press: pressFiltered.length,
-    twitter: tweetFiltered.length,
+    reddit: redditFiltered.length,
     googlenews: gnewsFiltered.length,
   });
 
   // Merge
-  const all = [...gdeltFiltered, ...pressFiltered, ...tweetFiltered, ...gnewsFiltered];
+  const all = [...gdeltFiltered, ...pressFiltered, ...redditFiltered, ...gnewsFiltered];
 
   // Cross-source confirm
   const confirmed = crossSourceConfirm(all);

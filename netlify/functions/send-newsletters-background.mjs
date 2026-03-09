@@ -14,7 +14,7 @@ import { listSubscribers, getStats, saveStats } from './_lib/db.mjs';
 const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
- * CRON: Daily digest at 07:00 UTC
+ * CRON: Daily digest at 05:30 UTC
  * Triggered by Netlify scheduled function
  */
 export const handler = async (event) => {

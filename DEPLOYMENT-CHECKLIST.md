@@ -54,6 +54,13 @@
 - [ ] FINNHUB_API_KEY
 - [ ] SAM_GOV_API_KEY (if approved)
 
+**Optional (Phase 4):**
+- [ ] REDDIT_CLIENT_ID
+- [ ] REDDIT_CLIENT_SECRET
+- [ ] REDDIT_USERNAME
+- [ ] REDDIT_PASSWORD
+- [ ] REDDIT_USER_AGENT
+
 **Configuration:**
 - [ ] WATCHED_COMPANIES
 - [ ] WATCHED_STOCKS
@@ -99,10 +106,19 @@
 - [ ] Unsubscribe link works from email
 - [ ] Plain text version is readable
 
+### Phase 4 Signal Validation
+- [ ] Newsletter includes "Top Confirmed Signals" section (when cross-source matches exist)
+- [ ] Newsletter includes "Global Early Signals (GDELT)" section
+- [ ] Newsletter includes "Corporate Announcements" (press releases)
+- [ ] Newsletter includes "Breaking Headlines (Google News)"
+- [ ] Sections are omitted gracefully when no data (no empty sections)
+- [ ] GDELT events show tone scores
+- [ ] Cross-source confirmed events are highlighted
+
 ### Scheduled Function Validation
 - [ ] Cron schedule visible in Netlify dashboard (Functions → send-newsletters → Settings)
-- [ ] Schedule shows: "0 7 * * *" (daily at 07:00 UTC)
-- [ ] Wait 24 hours or check logs after 07:00 UTC next day
+- [ ] Schedule shows: "30 5 * * *" (daily at 05:30 UTC)
+- [ ] Wait 24 hours or check logs after 05:30 UTC next day
 - [ ] Confirm email sent automatically
 
 ## Monitoring Setup

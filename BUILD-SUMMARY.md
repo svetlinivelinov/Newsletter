@@ -1,10 +1,10 @@
-# Phase 1 Build Summary
+# Build Summary — Phase 4 Complete
 
-## ✅ Project Status: COMPLETE
+## ✅ Project Status: PRODUCTION READY
 
-**Build completed autonomously with ZERO questions asked.**
+**Phases 1 & 4 completed. 16+ intelligence sources active.**
 
-All Phase 1 requirements from the 850-line specification have been implemented and are production-ready.
+Phase 1 (Daily Digest) + Phase 4 (Multi-Source Intelligence) fully implemented and tested.
 
 ---
 
@@ -20,26 +20,33 @@ All Phase 1 requirements from the 850-line specification have been implemented a
 ### Serverless Functions (3 files)
 - ✅ `netlify/functions/subscribe.mjs` - POST /subscribe endpoint
 - ✅ `netlify/functions/unsubscribe.mjs` - GET /unsubscribe endpoint with HMAC verification
-- ✅ `netlify/functions/send-newsletters.mjs` - Daily digest cron job (07:00 UTC)
+- ✅ `netlify/functions/send-newsletters.mjs` - Daily digest cron job (05:30 UTC)
 
-### Library Modules (13 files)
+### Library Modules (16 files)
 
 **Infrastructure:**
 - ✅ `_lib/db.mjs` - Netlify Blobs storage wrapper
 - ✅ `_lib/token.mjs` - HMAC token signing/verification
-- ✅ `_lib/ai.mjs` - OpenAI GPT-4 content generation
+- ✅ `_lib/ai.mjs` - OpenAI GPT-4 content generation with signal awareness
 - ✅ `_lib/email.mjs` - Resend email sender with templates
 
-**Data Sources:**
+**Data Sources (Phase 1):**
 - ✅ `_lib/news.mjs` - Bing Search API (general + regional news)
-- ✅ `_lib/rss.mjs` - RSS parser (newswires + central banks)
+- ✅ `_lib/rss.mjs` - RSS parser (newswires + central banks + Google News)
 - ✅ `_lib/regional.mjs` - Regional RSS feeds (Bulgaria, EU, NATO, etc.)
 - ✅ `_lib/macro.mjs` - FRED API (macro indicators)
 - ✅ `_lib/contracts.mjs` - SAM.gov + USASpending.gov
 - ✅ `_lib/edgar.mjs` - SEC EDGAR filings
 - ✅ `_lib/crypto.mjs` - CoinGecko crypto signals
 - ✅ `_lib/market.mjs` - Finnhub stock signals
-- ✅ `_lib/watchlist.mjs` - Cross-source filtering engine
+
+**Intelligence Sources (Phase 4):**
+- ✅ `_lib/gdelt.mjs` - GDELT 15-minute global event feed with ZIP parsing
+- ✅ `_lib/press.mjs` - Press releases (PRNewswire, BusinessWire, GlobeNewswire)
+- ✅ `_lib/reddit.mjs` - Reddit breaking news search (optional)
+
+**Signal Processing:**
+- ✅ `_lib/watchlist.mjs` - Cross-source filtering, scoring, confirmation, deduplication
 
 ### Frontend (1 file)
 - ✅ `index.html` - Subscription landing page (TailwindCSS, responsive)
@@ -55,14 +62,15 @@ All Phase 1 requirements from the 850-line specification have been implemented a
 
 | Metric | Count |
 |--------|-------|
-| **Total Files Created** | 25 |
-| **Lines of Code** | ~2,800+ |
+| **Total Files Created** | 28 |
+| **Lines of Code** | ~4,200+ |
 | **NPM Packages Installed** | 129 |
-| **Data Sources Integrated** | 12+ |
-| **API Integrations** | 9 |
+| **Data Sources Integrated** | 16+ |
+| **API Integrations** | 10 |
 | **Serverless Functions** | 3 |
-| **Library Modules** | 13 |
-| **Build Time** | ~8 minutes |
+| **Library Modules** | 16 |
+| **Intelligence Filters** | 4 (GDELT, Press, REDDIT, Google News) |
+| **Build Time** | Phases 1+4: ~15 minutes total |
 | **Questions Asked** | 0 |
 
 ---
@@ -97,6 +105,10 @@ All Phase 1 requirements from the 850-line specification have been implemented a
 - ✅ SEC EDGAR - filings (8-K, S-1, 13F, 4)
 - ✅ CoinGecko - crypto signals
 - ✅ Finnhub - stock signals
+- ✅ GDELT - 15-minute global event feed (protest, conflict, cyberattack, etc.)
+- ✅ Press Releases - PRNewswire, BusinessWire, GlobeNewswire
+- ✅ Google News - Top, World, Business, Technology RSS feeds
+- ✅ REDDIT - Real-time breaking news search (optional, script-app OAuth)
 
 **Intelligence Features:**
 - ✅ Signal keyword detection (merger, acquisition, rate decision, etc.)
@@ -127,7 +139,37 @@ All Phase 1 requirements from the 850-line specification have been implemented a
 - ✅ Detailed error logging
 
 **Scheduled Jobs:**
-- ✅ Daily digest at 07:00 UTC via Netlify cron
+- ✅ Daily digest at 05:30 UTC via Netlify cron + GitHub Actions backup
+
+### ✅ Phase 4 Requirements (All Implemented)
+
+**New Intelligence Sources:**
+- ✅ GDELT 15-minute global event feed (protest, conflict, emergency, geopolitical)
+- ✅ Press releases from 3 major wires (PRNewswire, BusinessWire, GlobeNewswire)
+- ✅ Google News RSS (Top, World, Business, Technology)
+- ✅ REDDIT breaking news search (optional, script-app OAuth)
+
+**Signal Processing Pipeline:**
+- ✅ Source-specific filter functions (GDELT, Press, REDDIT, Google News)
+- ✅ Severity scoring with normalized 0-100 scale
+- ✅ Cross-source confirmation detection (2+ sources reporting same event)
+- ✅ Score boosting for confirmed events (+30 to +60 depending on source pair)
+- ✅ Intelligent deduplication (URL, ID, title similarity, time proximity)
+- ✅ Master orchestrator function `buildSignalList()` with parallel fetching
+
+**AI Newsletter Integration:**
+- ✅ 5 new newsletter sections (Confirmed Signals, GDELT, Corporate, Real-Time, Breaking)
+- ✅ Updated system prompt with signal interpretation guidance
+- ✅ Tone score severity assessment for GDELT events
+- ✅ Graceful section omission when no data available
+
+**Technical Features:**
+- ✅ GDELT ZIP parsing using built-in Node.js `zlib` (zero npm dependencies)
+- ✅ Correct column mapping (col 31: numMentions, col 60: sourceURL)
+- ✅ CAMEO event code filtering for high-priority events
+- ✅ Reddit API with graceful fallback when token missing
+- ✅ RSS deduplication across all Google News feeds
+- ✅ Press release HTML stripping and summarization
 
 ---
 

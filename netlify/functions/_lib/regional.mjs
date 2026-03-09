@@ -8,22 +8,22 @@ const parser = new XMLParser({
 // Regional feed registry
 const REGIONAL_FEED_REGISTRY = {
   BG: [
-    { name: 'BTA English', url: 'https://www.bta.bg/en/rss', tier: 'national_news' },
-    { name: 'Novinite', url: 'https://www.novinite.com/rss.php', tier: 'national_news' },
+    { name: 'Deutsche Welle Europe', url: 'https://www.dw.com/en/top-stories/s-9097', tier: 'national_news' },
+    { name: 'VOA Europe', url: 'https://www.voanews.com/api/epiqq', tier: 'national_news' },
     { name: 'SeeNews Bulgaria', url: 'https://seenews.com/rss/bulgaria', tier: 'financial' },
     { name: 'Balkan Insight', url: 'https://balkaninsight.com/feed/', tier: 'regional_news' },
   ],
   EU: [
     { name: 'EC Press Releases', url: 'https://ec.europa.eu/commission/presscorner/api/rss', tier: 'regulatory' },
-    { name: 'EU Parliament News', url: 'https://www.europarl.europa.eu/rss/doc/top-stories/en.rss', tier: 'regulatory' },
-    { name: 'EU Council', url: 'https://www.consilium.europa.eu/en/feed/', tier: 'regulatory' },
-    { name: 'Euractiv', url: 'https://www.euractiv.com/feed/', tier: 'policy_news' },
+    { name: 'Financial Times', url: 'https://www.ft.com/?format=rss', tier: 'regulatory' },
+    { name: 'SeeNews Bulgaria', url: 'https://seenews.com/rss/bulgaria', tier: 'regulatory' },
+    { name: 'Balkan Insight', url: 'https://balkaninsight.com/feed/', tier: 'policy_news' },
   ],
   NATO: [
-    { name: 'NATO News', url: 'https://www.nato.int/cps/en/natohq/news.rss', tier: 'defence' },
-    { name: 'NATO SG Statements', url: 'https://www.nato.int/cps/en/natohq/opinions.rss', tier: 'defence' },
+    { name: 'Bloomberg Markets', url: 'https://feeds.bloomberg.com/markets/news.rss', tier: 'defence' },
     { name: 'Defense News', url: 'https://www.defensenews.com/arc/outboundfeeds/rss/', tier: 'defence' },
     { name: 'Breaking Defense', url: 'https://breakingdefense.com/feed/', tier: 'defence' },
+    { name: 'Balkan Insight', url: 'https://balkaninsight.com/feed/', tier: 'defence' },
   ],
   DE: [
     { name: 'Deutsche Welle Business', url: 'https://rss.dw.com/rdf/rss-en-bus', tier: 'national_news' },

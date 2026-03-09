@@ -5,7 +5,7 @@ The system monitors 12+ data sources simultaneously, detects market-moving signa
 mainstream media, and delivers them to subscribers via a 3-tier alert system:
 - **TIER 1** — Breaking alerts sent immediately when critical signals fire
 - **TIER 2** — Midday bundle of notable signals queued since morning
-- **TIER 3** — Morning digest of everything else, sent daily at 07:00 UTC
+- **TIER 3** — Morning digest of everything else, sent daily at 05:30 UTC
 
 The architecture is designed to be built in 3 phases. Each phase is independently deployable.
 Always generate code for the phase currently active unless the user specifies otherwise.
@@ -17,20 +17,20 @@ Always generate code for the phase currently active unless the user specifies ot
 ### Phase 1 — Daily Digest (Build This First)
 **Goal:** Working newsletter with all data sources, sent once per day.
 **Storage:** Netlify Blobs only.
-**Cron:** 1 job — daily digest at 07:00 UTC.
+**Cron:** 1 job — daily digest at 05:30 UTC.
 **Complexity:** Low. No alert logic. No deduplication needed.
 
 ### Phase 2 — Breaking Alerts (Add After Phase 1 Works)
 **Goal:** Immediate alerts for TIER 1 signals (rate decisions, major M&A, crisis events).
 **Storage:** Netlify Blobs (subscribers) + Upstash Redis (dedup flags + signal queue).
-**Cron:** 2 jobs — signal check every 30 min + daily digest at 07:00 UTC.
+**Cron:** 2 jobs — signal check every 30 min + daily digest at 05:30 UTC.
 **New functions:** `check-signals.mjs`, `send-alert.mjs`
 **New lib:** `_lib/hotness.mjs`, `_lib/redis.mjs`
 
 ### Phase 3 — Full Intelligence Platform (Add After Phase 2 Works)
 **Goal:** Subscriber preferences, midday bundle, send history, web dashboard.
 **Storage:** Supabase Postgres (subscribers + history) + Upstash Redis (queue + dedup).
-**Cron:** 3 jobs — signal check every 30 min + midday bundle at 13:00 UTC + daily at 07:00 UTC.
+**Cron:** 3 jobs — signal check every 30 min + midday bundle at 13:00 UTC + daily at 05:30 UTC.
 **New functions:** `send-midday.mjs`, `preferences.mjs`
 **New lib:** `_lib/supabase.mjs`
 **Frontend:** Add preferences page where subscribers choose alert tiers they want.
@@ -74,7 +74,7 @@ project-root/
         ├── subscribe.mjs            # POST   /subscribe
         ├── unsubscribe.mjs          # GET    /unsubscribe?token=xxx
         ├── preferences.mjs          # POST   /preferences  [Phase 3]
-        ├── send-newsletters.mjs     # CRON   daily digest  07:00 UTC
+        ├── send-newsletters.mjs     # CRON   daily digest  05:30 UTC
         ├── check-signals.mjs        # CRON   every 30min   [Phase 2+]
         ├── send-alert.mjs           # INTERNAL called by check-signals [Phase 2+]
         ├── send-midday.mjs          # CRON   midday bundle 13:00 UTC   [Phase 3]
@@ -299,7 +299,7 @@ const HOTNESS_RULES = [
 - Update `preferences.tiers` in Supabase
 - Return `200` HTML confirmation
 
-### 6.4 `send-newsletters.mjs` — Daily Digest Cron (07:00 UTC)
+### 6.4 `send-newsletters.mjs` — Daily Digest Cron (05:30 UTC)
 
 - Verify `x-cron-secret` → `401`
 - Fetch all sources in parallel via `Promise.allSettled()`:

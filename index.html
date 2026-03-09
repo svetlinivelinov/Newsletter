@@ -34,7 +34,7 @@
               <span class="text-2xl mr-3">📰</span>
               <div>
                 <strong class="text-gray-900">Daily Morning Digest</strong>
-                <p class="text-gray-600">Comprehensive intelligence briefing at 07:00 UTC</p>
+                <p class="text-gray-600">Comprehensive intelligence briefing at 05:30 UTC</p>
               </div>
             </li>
             <li class="flex items-start">
@@ -152,7 +152,7 @@
         const data = await response.json();
 
         if (response.ok) {
-          showMessage('🎉 Successfully subscribed! Check your inbox tomorrow at 07:00 UTC.', 'success');
+          showMessage('🎉 Successfully subscribed! Check your inbox tomorrow at 05:30 UTC.', 'success');
           emailInput.value = '';
         } else {
           // Handle specific error codes

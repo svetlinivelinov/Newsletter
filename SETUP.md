@@ -1,4 +1,4 @@
-# Phase 1 Setup Guide
+# Setup Guide — Phases 1 & 4
 
 ## Prerequisites
 
@@ -11,6 +11,7 @@
    - FRED API (https://fred.stlouisfed.org/docs/api/api_key.html) - Free, instant
    - Finnhub (https://finnhub.io/register) - Free tier
    - SAM.gov (https://sam.gov/content/api) - Free, 1-10 day approval
+  - **[Optional]** Reddit Script App (https://www.reddit.com/prefs/apps) - For real-time breaking news
 
 ## Local Development Setup
 
@@ -97,6 +98,11 @@ netlify env:set CRON_SECRET "your-generated-secret"
 netlify env:set UNSUBSCRIBE_SECRET "your-generated-secret"
 netlify env:set EMAIL_FROM "digest@yourdomain.com"
 netlify env:set EDGAR_USER_AGENT "YourAppName admin@yourdomain.com"
+netlify env:set REDDIT_CLIENT_ID "your-client-id"
+netlify env:set REDDIT_CLIENT_SECRET "your-client-secret"
+netlify env:set REDDIT_USERNAME "your-reddit-username"
+netlify env:set REDDIT_PASSWORD "your-reddit-password"
+netlify env:set REDDIT_USER_AGENT "IntelligenceNewsletter/1.0 by u/your_reddit_username"
 netlify env:set WATCHED_COMPANIES "Palantir,Anduril,Microsoft,Lockheed Martin,Scale AI"
 netlify env:set WATCHED_STOCKS "PLTR,MSFT,LMT"
 netlify env:set WATCHED_CRYPTOS "bitcoin,ethereum,solana"
@@ -120,7 +126,7 @@ netlify deploy --prod
 
 ### Step 5: Verify Scheduled Function
 
-The cron job is configured in `netlify.toml` to run at 07:00 UTC daily. 
+The cron job is configured in `netlify.toml` to run at 05:30 UTC daily. 
 
 To manually trigger it for testing:
 

@@ -46,7 +46,7 @@ Write a daily briefing in clean HTML for email clients.
 Use ONLY the provided data. Never invent or hallucinate facts.
 If a section has no data write: <p>No updates today.</p>
 Every item MUST have a source link: <a href="URL">[Source]</a>. Omit items without URLs.
-You have access to early intelligence signals from GDELT, press releases, Twitter, and Google News — often ahead of mainstream media.
+You have access to early intelligence signals from GDELT, press releases, Reddit, and Google News — often ahead of mainstream media.
 Highlight any CONFIRMED cross-source signals prominently.
 Use tone scores to gauge severity: below -3 indicates a serious event.
 No markdown. No inline styles.`;
@@ -76,8 +76,8 @@ Sections (use <h2> tags):
                                   Show top 5 GDELT events. For each: title, summary, tone score, link.
 13. 📢 Corporate Announcements — ONLY if data.signals contains source='press' items.
                                   Show top 5 press releases. For each: title, summary, link.
-14. ⚡ Real-Time Signals       — ONLY if data.signals contains source='twitter' items.
-                                  Show top 5 tweets. For each: text preview, link.
+14. ⚡ Real-Time Signals       — ONLY if data.signals contains source='reddit' items.
+                                  Show top 5 posts. For each: text preview, link.
 15. 📰 Breaking Headlines      — ONLY if data.signals contains source='googlenews' items.
                                   Show top 5 headlines. For each: title, link.
 

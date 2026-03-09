@@ -38,6 +38,36 @@ export default async function generateContent(type, data) {
 }
 
 /**
+ * Trim data arrays to safe limits before sending to OpenAI.
+ * GDELT alone can generate 15,000+ events — we only need the top signals.
+ */
+function trimDataForPrompt(data) {
+  const cap = (arr, n) => Array.isArray(arr) ? arr.slice(0, n) : arr;
+  return {
+    ...data,
+    // Main news sections — 10 each is sufficient
+    globalNews:       cap(data.globalNews,       10),
+    techNews:         cap(data.techNews,          10),
+    economyNews:      cap(data.economyNews,       10),
+    regionalNews:     cap(data.regionalNews,      10),
+    // RSS + regional
+    earlyBirdItems:   cap(data.earlyBirdItems,    10),
+    centralBankItems: cap(data.centralBankItems,  5),
+    regionalItems:    cap(data.regionalItems,     15),
+    // Structured data
+    indicators:       cap(data.indicators,        10),
+    upcomingReleases: cap(data.upcomingReleases,  5),
+    contracts:        cap(data.contracts,         8),
+    edgarFilings:     cap(data.edgarFilings,      8),
+    cryptoSignals:    cap(data.cryptoSignals,     8),
+    marketSignals:    cap(data.marketSignals,     8),
+    watchlistHits:    cap(data.watchlistHits,     10),
+    // Intelligence signals — send top 20 by score (already sorted)
+    signals:          cap(data.signals,           20),
+  };
+}
+
+/**
  * Generate daily digest
  */
 async function generateDigest(data) {
@@ -90,7 +120,7 @@ Rules:
 - Never fabricate data not present below.
 - Never render a section or sub-section that has no data.
 
-DATA: ${JSON.stringify(data, null, 2)}`;
+DATA: ${JSON.stringify(trimDataForPrompt(data))}`;
 
   try {
     const response = await openai.chat.completions.create({

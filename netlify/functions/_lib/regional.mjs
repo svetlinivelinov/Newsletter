@@ -8,10 +8,16 @@ const parser = new XMLParser({
 // Regional feed registry
 const REGIONAL_FEED_REGISTRY = {
   BG: [
+    // English-language sources covering Bulgaria
     { name: 'Deutsche Welle Europe', url: 'https://www.dw.com/en/top-stories/s-9097', tier: 'national_news' },
     { name: 'VOA Europe', url: 'https://www.voanews.com/api/epiqq', tier: 'national_news' },
     { name: 'SeeNews Bulgaria', url: 'https://seenews.com/rss/bulgaria', tier: 'financial' },
     { name: 'Balkan Insight', url: 'https://balkaninsight.com/feed/', tier: 'regional_news' },
+    { name: 'Sofia Globe', url: 'https://sofiaglobe.com/feed/', tier: 'national_news' },
+    // Native Bulgarian sources — GPT-4o reads Cyrillic
+    { name: 'Capital.bg', url: 'https://www.capital.bg/rss/', tier: 'financial' },
+    { name: 'Dnevnik.bg', url: 'https://www.dnevnik.bg/rss/', tier: 'national_news' },
+    { name: 'Mediapool.bg', url: 'https://www.mediapool.bg/rss/', tier: 'national_news' },
   ],
   EU: [
     { name: 'EC Press Releases', url: 'https://ec.europa.eu/commission/presscorner/api/rss', tier: 'regulatory' },

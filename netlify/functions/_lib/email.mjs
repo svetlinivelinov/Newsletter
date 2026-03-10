@@ -1,7 +1,14 @@
 import { Resend } from 'resend';
 import { signToken } from './token.mjs';
 
-const resend = new Resend(process.env.EMAIL_API_KEY);
+// Lazy-initialize so a missing EMAIL_API_KEY doesn't crash the module at load
+// time (which causes Netlify to return 500 before the handler even runs).
+let _resend;
+const getResend = () => {
+  if (!_resend) _resend = new Resend(process.env.EMAIL_API_KEY);
+  return _resend;
+};
+
 const FROM_EMAIL = process.env.EMAIL_FROM;
 const UNSUBSCRIBE_SECRET = process.env.UNSUBSCRIBE_SECRET;
 
@@ -24,7 +31,7 @@ export const sendDigest = async (to, htmlContent) => {
   const plainText = htmlToPlainText(htmlContent);
   
   try {
-    const response = await resend.emails.send({
+    const response = await getResend().emails.send({
       from: FROM_EMAIL,
       to,
       subject,
@@ -67,7 +74,7 @@ export const sendAlert = async (to, htmlContent, signalType, headline) => {
   const plainText = htmlToPlainText(htmlContent);
   
   try {
-    const response = await resend.emails.send({
+    const response = await getResend().emails.send({
       from: FROM_EMAIL,
       to,
       subject,
@@ -102,7 +109,7 @@ export const sendMidday = async (to, htmlContent) => {
   const plainText = htmlToPlainText(htmlContent);
   
   try {
-    const response = await resend.emails.send({
+    const response = await getResend().emails.send({
       from: FROM_EMAIL,
       to,
       subject,

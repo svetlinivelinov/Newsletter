@@ -9,7 +9,7 @@ import fetchMarketSignals from './_lib/market.mjs';
 import applyWatchlist, { buildSignalList } from './_lib/watchlist.mjs';
 import generateContent from './_lib/ai.mjs';
 import { sendDigest } from './_lib/email.mjs';
-import { listSubscribers, getStats, saveStats } from './_lib/db.mjs';
+import { listSubscribers } from './_lib/db.mjs';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -74,10 +74,15 @@ export const handler = async (event) => {
     const marketData = marketResult.status === 'fulfilled' ? marketResult.value : [];
     const signals = signalsResult.status === 'fulfilled' ? signalsResult.value : [];
 
+    const regionalByRegion = {};
+    for (const item of (regionalData.regionalItems || [])) {
+      regionalByRegion[item.region] = (regionalByRegion[item.region] || 0) + 1;
+    }
     console.info('[DIGEST] Data collection complete:', {
       news: newsData.globalNews?.length || 0,
       rss: rssData.earlyBirdItems?.length || 0,
       regional: regionalData.regionalItems?.length || 0,
+      regionalBreakdown: regionalByRegion,
       macro: macroData.indicators?.length || 0,
       contracts: contractsData.length || 0,
       edgar: edgarData.length || 0,
@@ -133,14 +138,10 @@ export const handler = async (event) => {
     console.info(`[DIGEST] Got ${signals.length} signals (${signals.filter(s => s.confirmed).length} confirmed)`);
     updatedData.signals = signals;
 
-    // Generate newsletter content
-    console.info('[DIGEST] Generating AI content...');
-    const htmlContent = await generateContent('digest', updatedData);
-
-    // Load subscribers
+    // Load subscribers before generating AI content to avoid wasting API calls
     console.info('[DIGEST] Loading subscribers...');
     const subscribers = await listSubscribers();
-    
+
     if (subscribers.length === 0) {
       console.warn('[DIGEST] No active subscribers');
       return {
@@ -152,6 +153,10 @@ export const handler = async (event) => {
         }),
       };
     }
+
+    // Generate newsletter content
+    console.info('[DIGEST] Generating AI content...');
+    const htmlContent = await generateContent('digest', updatedData);
 
     console.info(`[DIGEST] Sending to ${subscribers.length} subscribers...`);
 

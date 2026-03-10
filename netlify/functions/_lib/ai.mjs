@@ -1,8 +1,12 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy-initialize so a missing OPENAI_API_KEY doesn't crash the module at load
+// time (which causes Netlify to return 500 before the handler even runs).
+let _openai;
+const getOpenAI = () => {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _openai;
+};
 
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
 
@@ -68,7 +72,21 @@ function trimDataForPrompt(data) {
     // RSS + regional
     earlyBirdItems:   cap(data.earlyBirdItems,    10),
     centralBankItems: cap(data.centralBankItems,  5),
-    regionalItems:    cap(data.regionalItems,     15),
+    // Group by region, take up to 8 per region, and sort so BG always leads —
+    // the AI tends to write sub-sections in the order it sees the data.
+    regionalItems: (() => {
+      const REGION_ORDER = ['BG', 'EU', 'NATO'];
+      const byRegion = {};
+      for (const item of (data.regionalItems || [])) {
+        if (!byRegion[item.region]) byRegion[item.region] = [];
+        byRegion[item.region].push(item);
+      }
+      const sortedRegions = [
+        ...REGION_ORDER.filter(r => byRegion[r]),
+        ...Object.keys(byRegion).filter(r => !REGION_ORDER.includes(r)),
+      ];
+      return sortedRegions.flatMap(r => byRegion[r].slice(0, 8));
+    })(),
     // Structured data
     indicators:       cap(data.indicators,        10),
     upcomingReleases: cap(data.upcomingReleases,  5),
@@ -93,6 +111,7 @@ Every item MUST have a source link: <a href="URL">[Source]</a>. Omit items witho
 You have access to early intelligence signals from GDELT, press releases, Reddit, and Google News — often ahead of mainstream media.
 Highlight any CONFIRMED cross-source signals prominently.
 Use tone scores to gauge severity: below -3 indicates a serious event.
+Some items may be in Bulgarian (Cyrillic). Read and summarize them in English.
 No markdown. No inline styles.`;
 
   const userPrompt = `Generate today's intelligence digest using ONLY the data below.
@@ -139,7 +158,7 @@ Rules:
 DATA: ${JSON.stringify(trimDataForPrompt(data))}`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -172,7 +191,7 @@ Format:
 <p><em>Not financial advice.</em></p>`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -203,7 +222,7 @@ Each: signal type label + one sentence + source link.
 DATA: ${JSON.stringify(signals, null, 2)}`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: MODEL,
       messages: [
         { role: 'system', content: systemPrompt },

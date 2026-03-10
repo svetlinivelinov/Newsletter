@@ -222,13 +222,13 @@ export function filterGDELT(events) {
       const hasKeyword = BREAKING_KEYWORDS.some(kw => text.includes(kw));
       // Keep if EITHER category matches OR keyword matches
       if (!catMatch && !hasKeyword) return false;
+      e._isHighPriority = catMatch; // cache for scoring step
       return true;
     })
     .map(e => {
       // Rule 4: Severity scoring
-      const isHighPriority = GDELT_HIGH_PREFIXES.some(p => e.category.startsWith(p)) ||
-                             GDELT_HIGH_CODES.includes(e.category);
-      e.score = 50 + (Math.abs(e.tone) * 2) + ((e.numMentions || 0) * 0.5) + (isHighPriority ? 20 : 0);
+      e.score = 50 + (Math.abs(e.tone) * 2) + ((e.numMentions || 0) * 0.5) + (e._isHighPriority ? 20 : 0);
+      delete e._isHighPriority;
       return e;
     })
     .sort((a, b) => b.score - a.score)

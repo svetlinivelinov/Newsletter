@@ -1,7 +1,6 @@
 // Yahoo Finance API (unofficial) — fallback for FX and commodities
 // Usage: fetchYahooPrice(symbol)
-
-import fetch from 'node-fetch';
+// Node 20 has native fetch — no import needed.
 
 /**
  * Fetch latest price for a Yahoo Finance symbol

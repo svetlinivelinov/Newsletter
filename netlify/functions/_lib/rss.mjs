@@ -137,6 +137,7 @@ const GOOGLE_NEWS_FEEDS = [
   { name: 'Google World', url: 'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en' },
   { name: 'Google Business', url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en' },
   { name: 'Google Tech', url: 'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en' },
+  { name: 'Google News Bulgaria', url: 'https://news.google.com/rss?hl=bg&gl=BG&ceid=BG:bg' },
 ];
 
 /**
@@ -177,46 +178,50 @@ export async function fetchGoogleNews() {
 
 async function fetchGoogleNewsFeed(feed) {
   const controller = new AbortController();
-  setTimeout(() => controller.abort(), 10000);
-  const response = await fetch(feed.url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; IntelligenceBot/1.0)' },
-    signal: controller.signal,
-  });
-  if (!response.ok) throw new Error(`${feed.name} HTTP ${response.status}`);
-
-  const xml = await response.text();
-  const data = parser.parse(xml);
-
-  const channel = data.rss?.channel || data.feed;
-  if (!channel) return [];
-
-  const items = Array.isArray(channel.item) ? channel.item : [channel.item].filter(Boolean);
-
-  return items
-    .filter(item => item.link || item.id)
-    .map(item => {
-      const title = item.title?.toString() || '';
-      const description = item.description?.toString() || title;
-      const link = typeof item.link === 'string' ? item.link : (item.link?.href || item.id || '');
-      const pubDate = item.pubDate || item.published || item.updated;
-      // Simple hash for ID
-      let hash = 0;
-      for (let i = 0; i < link.length; i++) {
-        hash = ((hash << 5) - hash) + link.charCodeAt(i);
-        hash |= 0;
-      }
-
-      return {
-        id: `gnews_${Math.abs(hash).toString(36)}`,
-        source: 'googlenews',
-        title,
-        summary: description.replace(/<[^>]*>/g, '').slice(0, 500),
-        url: link,
-        timestamp: pubDate ? new Date(pubDate) : new Date(),
-        tone: 0,
-        category: 'news',
-        score: 0,
-        confirmed: false,
-      };
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(feed.url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; IntelligenceBot/1.0)' },
+      signal: controller.signal,
     });
+    if (!response.ok) throw new Error(`${feed.name} HTTP ${response.status}`);
+
+    const xml = await response.text();
+    const data = parser.parse(xml);
+
+    const channel = data.rss?.channel || data.feed;
+    if (!channel) return [];
+
+    const items = Array.isArray(channel.item) ? channel.item : [channel.item].filter(Boolean);
+
+    return items
+      .filter(item => item.link || item.id)
+      .map(item => {
+        const title = item.title?.toString() || '';
+        const description = item.description?.toString() || title;
+        const link = typeof item.link === 'string' ? item.link : (item.link?.href || item.id || '');
+        const pubDate = item.pubDate || item.published || item.updated;
+        // Simple hash for ID
+        let hash = 0;
+        for (let i = 0; i < link.length; i++) {
+          hash = ((hash << 5) - hash) + link.charCodeAt(i);
+          hash |= 0;
+        }
+
+        return {
+          id: `gnews_${Math.abs(hash).toString(36)}`,
+          source: 'googlenews',
+          title,
+          summary: description.replace(/<[^>]*>/g, '').slice(0, 500),
+          url: link,
+          timestamp: pubDate ? new Date(pubDate) : new Date(),
+          tone: 0,
+          category: 'news',
+          score: 0,
+          confirmed: false,
+        };
+      });
+  } finally {
+    clearTimeout(timer);
+  }
 }

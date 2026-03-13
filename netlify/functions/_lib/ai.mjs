@@ -8,7 +8,7 @@ const getOpenAI = () => {
   return _openai;
 };
 
-const MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
+const MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
 
 // Some models (e.g., gpt-4o-mini) only support the default temperature=1.0.
 // Force temperature to 1.0 when the selected model includes "mini".

@@ -8,12 +8,23 @@ const getOpenAI = () => {
   return _openai;
 };
 
-const MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
+const MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
 
 // Some models (e.g., gpt-4o-mini) only support the default temperature=1.0.
 // Force temperature to 1.0 when the selected model includes "mini".
 const modelForcesDefaultTemperature = /mini/i.test(MODEL);
 const pickTemperature = (desired) => modelForcesDefaultTemperature ? 1 : desired;
+
+// Never send empty emails: if OpenAI returns empty content, fall back to a minimal placeholder.
+const fallbackContent = (type) => `<!DOCTYPE html><html><body><p>No ${type} content generated this run.</p></body></html>`;
+const extractContent = (response, type) => {
+  const content = response?.choices?.[0]?.message?.content;
+  if (!content || !content.trim()) {
+    console.error(`[AI] Empty content from OpenAI for ${type}, using fallback.`);
+    return fallbackContent(type);
+  }
+  return content;
+};
 
 /**
  * Generate newsletter content using OpenAI
@@ -173,7 +184,7 @@ DATA: ${JSON.stringify(trimDataForPrompt(data))}`;
       max_completion_tokens: 4000,
     });
 
-    return response.choices[0].message.content;
+    return extractContent(response, 'digest');
   } catch (error) {
     console.error('[AI] OpenAI digest generation failed:', error.message);
     throw error;
@@ -206,7 +217,7 @@ Format:
       max_completion_tokens: 1500,
     });
 
-    return response.choices[0].message.content;
+    return extractContent(response, 'alert');
   } catch (error) {
     console.error('[AI] OpenAI alert generation failed:', error.message);
     throw error;
@@ -237,7 +248,7 @@ DATA: ${JSON.stringify(signals, null, 2)}`;
       max_completion_tokens: 1000,
     });
 
-    return response.choices[0].message.content;
+    return extractContent(response, 'midday');
   } catch (error) {
     console.error('[AI] OpenAI midday generation failed:', error.message);
     throw error;

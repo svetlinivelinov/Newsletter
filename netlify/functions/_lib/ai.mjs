@@ -10,6 +10,11 @@ const getOpenAI = () => {
 
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
 
+// Some models (e.g., gpt-4o-mini) only support the default temperature=1.0.
+// Force temperature to 1.0 when the selected model includes "mini".
+const modelForcesDefaultTemperature = /mini/i.test(MODEL);
+const pickTemperature = (desired) => modelForcesDefaultTemperature ? 1 : desired;
+
 /**
  * Generate newsletter content using OpenAI
  * @param {string} type - 'digest' | 'alert' | 'midday'
@@ -164,7 +169,7 @@ DATA: ${JSON.stringify(trimDataForPrompt(data))}`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      temperature: 0.3,
+      temperature: pickTemperature(0.3),
       max_completion_tokens: 4000,
     });
 
@@ -197,7 +202,7 @@ Format:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      temperature: 0.2,
+      temperature: pickTemperature(0.2),
       max_completion_tokens: 1500,
     });
 
@@ -228,7 +233,7 @@ DATA: ${JSON.stringify(signals, null, 2)}`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      temperature: 0.3,
+      temperature: pickTemperature(0.3),
       max_completion_tokens: 1000,
     });
 
